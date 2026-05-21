@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+<meta charset="UTF-8">
+<title>Resumo Funcionários</title>
+
+<style>
+
+body{
+font-family:Arial;
+background:#f5f5f5;
+padding:30px;
+}
+
+.container{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+gap:20px;
+}
+
+.card{
+background:white;
+padding:20px;
+border-radius:15px;
+box-shadow:0 4px 10px rgba(0,0,0,.1);
+}
+
+.nome{
+font-size:20px;
+font-weight:bold;
+margin-bottom:15px;
+}
+
+.info{
+margin:10px 0;
+font-size:18px;
+}
+
+.valor{
+color:green;
+font-size:25px;
+font-weight:bold;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<h1>Resumo de Pagamentos</h1>
+
+<div class="container" id="cards"></div>
+
+<script>
+
+const API="COLE_AQUI_SUA_URL";
+
+async function carregar(){
+
+const resposta=await fetch(API);
+
+const dados=await resposta.json();
+
+const cards=document.getElementById("cards");
+
+cards.innerHTML="";
+
+dados.forEach(func=>{
+
+cards.innerHTML+=`
+
+<div class="card">
+
+<div class="nome">
+${func.nome}
+</div>
+
+<div class="info">
+⏱ Total Horas:
+${func.horas.toFixed(2)}
+</div>
+
+<div class="info valor">
+💰 R$ ${func.total.toFixed(2)}
+</div>
+
+</div>
+
+`;
+
+})
+
+}
+
+carregar();
+
+</script>
+
+</body>
+
+</html>
