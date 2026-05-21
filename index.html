@@ -2,45 +2,94 @@
 <html lang="pt-br">
 
 <head>
+
 <meta charset="UTF-8">
+
 <title>Resumo Funcionários</title>
 
 <style>
 
-body{
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
 font-family:Arial;
+}
+
+body{
 background:#f5f5f5;
 padding:30px;
 }
 
+.topo{
+
+display:flex;
+gap:15px;
+margin-bottom:30px;
+flex-wrap:wrap;
+
+}
+
+input,select{
+
+padding:12px;
+border:none;
+border-radius:10px;
+font-size:16px;
+box-shadow:0 3px 8px rgba(0,0,0,.1);
+
+}
+
 .container{
+
 display:grid;
-grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+grid-template-columns:
+repeat(
+auto-fit,
+minmax(300px,1fr)
+);
+
 gap:20px;
+
 }
 
 .card{
+
 background:white;
 padding:20px;
 border-radius:15px;
 box-shadow:0 4px 10px rgba(0,0,0,.1);
+
 }
 
 .nome{
-font-size:20px;
+
+font-size:22px;
 font-weight:bold;
 margin-bottom:15px;
+
 }
 
 .info{
+
 margin:10px 0;
 font-size:18px;
+
 }
 
 .valor{
-color:green;
+
 font-size:25px;
 font-weight:bold;
+color:green;
+
+}
+
+.mes{
+
+color:#666;
+margin-bottom:15px;
+
 }
 
 </style>
@@ -49,52 +98,192 @@ font-weight:bold;
 
 <body>
 
-<h1>Resumo de Pagamentos</h1>
+<h1>
+Resumo de Pagamentos
+</h1>
 
-<div class="container" id="cards"></div>
+<br>
+
+<div class="topo">
+
+<input
+id="pesquisa"
+placeholder="Pesquisar funcionário..."
+>
+
+<select id="mesFiltro">
+
+<option value="">
+Todos os meses
+</option>
+
+</select>
+
+</div>
+
+<div
+class="container"
+id="cards"
+></div>
 
 <script>
 
-const API="https://script.google.com/macros/s/AKfycbzj6JeI1llORYRey44paheCdqLhO_gIbZ3dwinUmFLLpHaMkuToXOJMngY9JwIP3OWt3w/exec";
+const API="https://script.google.com/macros/s/AKfycbwwLMU7QkzAVjTnpaQVRYQYJu3yvDww71jmxUklEt2eELj7xnBh8YcN2wxS0kMkBwsobw/exec";
+
+let dados=[];
 
 async function carregar(){
 
-const resposta=await fetch(API);
+const resposta=
+await fetch(API);
 
-const dados=await resposta.json();
+dados=
+await resposta.json();
 
-const cards=document.getElementById("cards");
+popularMeses();
+
+renderizar();
+
+}
+
+function popularMeses(){
+
+const select=
+document.getElementById(
+"mesFiltro"
+);
+
+const meses=[
+...new Set(
+dados.map(
+x=>x.mes
+)
+)
+];
+
+meses.sort();
+
+meses.forEach(m=>{
+
+select.innerHTML+=
+`
+<option value="${m}">
+${m}
+</option>
+`;
+
+});
+
+}
+
+function renderizar(){
+
+const pesquisa=
+document
+.getElementById(
+"pesquisa"
+)
+.value
+.toLowerCase();
+
+const mes=
+document
+.getElementById(
+"mesFiltro"
+)
+.value;
+
+const cards=
+document.getElementById(
+"cards"
+);
 
 cards.innerHTML="";
 
-dados.forEach(func=>{
+const filtrado=
+dados.filter(f=>{
+
+const nomeOk=
+f.nome
+.toLowerCase()
+.includes(
+pesquisa
+);
+
+const mesOk=
+!mes ||
+f.mes==mes;
+
+return nomeOk &&
+mesOk;
+
+});
+
+filtrado.forEach(func=>{
 
 cards.innerHTML+=`
 
 <div class="card">
 
 <div class="nome">
+
 ${func.nome}
+
+</div>
+
+<div class="mes">
+
+📅 ${func.mes}
+
 </div>
 
 <div class="info">
-⏱ Total Horas:
+
+⏱ Horas:
+
 ${func.horas.toFixed(2)}
+
 </div>
 
 <div class="info valor">
-💰 R$ ${func.total.toFixed(2)}
+
+💰 R$
+${func.total.toFixed(2)}
+
 </div>
 
 </div>
 
 `;
 
-})
+});
 
 }
 
+document
+.getElementById(
+"pesquisa"
+)
+.addEventListener(
+"input",
+renderizar
+);
+
+document
+.getElementById(
+"mesFiltro"
+)
+.addEventListener(
+"change",
+renderizar
+);
+
 carregar();
+
+setInterval(
+carregar,
+30000
+);
 
 </script>
 
