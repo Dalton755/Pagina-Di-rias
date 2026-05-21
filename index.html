@@ -254,8 +254,8 @@ document.getElementById(
 
 cards.innerHTML="";
 
-const filtrado=
-dados.filter(f=>{
+// filtra dados originais
+const filtrado=dados.filter(f=>{
 
 const nomeOk=
 f.nome
@@ -268,12 +268,40 @@ const mesOk=
 !mes ||
 f.mes==mes;
 
-return nomeOk &&
-mesOk;
+return nomeOk && mesOk;
 
 });
 
-filtrado.forEach(func=>{
+// agrupa por nome
+const agrupado={};
+
+filtrado.forEach(item=>{
+
+if(!agrupado[item.nome]){
+
+agrupado[item.nome]={
+
+nome:item.nome,
+horas:0,
+total:0
+
+};
+
+}
+
+agrupado[item.nome].horas+=
+Number(item.horas);
+
+agrupado[item.nome].total+=
+Number(item.total);
+
+});
+
+// cria cards
+Object.values(
+agrupado
+)
+.forEach(func=>{
 
 cards.innerHTML+=`
 
@@ -285,15 +313,9 @@ ${func.nome}
 
 </div>
 
-<div class="mes">
-
-📅 ${func.mes}
-
-</div>
-
 <div class="info">
 
-⏱ Horas:
+⏱ Horas totais:
 
 ${func.horas.toFixed(2)}
 
@@ -301,8 +323,7 @@ ${func.horas.toFixed(2)}
 
 <div class="info valor">
 
-💰 R$
-${func.total.toFixed(2)}
+💰 R$ ${func.total.toFixed(2)}
 
 </div>
 
