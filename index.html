@@ -172,24 +172,54 @@ renderizar();
 
 function popularMeses(){
 
-const select=
+const select =
 document.getElementById(
 "mesFiltro"
 );
 
-const meses=[
+// limpa tudo e mantém apenas a opção padrão
+select.innerHTML=
+`
+<option value="">
+Todos os meses
+</option>
+`;
+
+// remove vazios e #N/A
+const meses = [
 ...new Set(
-dados.map(
-x=>x.mes
+dados
+.filter(
+x =>
+x.mes &&
+x.mes != "#N/A"
+)
+.map(
+x => x.mes
 )
 )
 ];
 
-meses.sort();
+// ordenação correta
+meses.sort((a,b)=>{
+
+const n1=
+parseInt(
+a.match(/\d+/)?.[0] || 0
+);
+
+const n2=
+parseInt(
+b.match(/\d+/)?.[0] || 0
+);
+
+return n1-n2;
+
+});
 
 meses.forEach(m=>{
 
-select.innerHTML+=
+select.innerHTML +=
 `
 <option value="${m}">
 ${m}
@@ -304,10 +334,33 @@ renderizar
 
 carregar();
 
-setInterval(
-carregar,
-30000
-);
+setInterval(()=>{
+
+const mesAtual =
+document.getElementById(
+"mesFiltro"
+).value;
+
+const pesquisaAtual =
+document.getElementById(
+"pesquisa"
+).value;
+
+carregar().then(()=>{
+
+document.getElementById(
+"mesFiltro"
+).value=mesAtual;
+
+document.getElementById(
+"pesquisa"
+).value=pesquisaAtual;
+
+renderizar();
+
+});
+
+},30000);
 
 </script>
 
