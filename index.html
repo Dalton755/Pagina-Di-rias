@@ -1,430 +1,545 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-
+<!doctype html>
+<html lang="pt-BR">
 <head>
-
-<meta charset="UTF-8">
-
-<title>Resumo Funcionários</title>
-
-<style>
-
-*{
-margin:0;
-padding:0;
-box-sizing:border-box;
-font-family:Arial;
-}
-
-body{
-
-background:#f5f5f5;
-padding:30px;
-padding-top:10px;
-
-}
-
-.topo{
-
-position:sticky;
-top:0;
-z-index:1000;
-
-display:flex;
-gap:15px;
-flex-wrap:wrap;
-
-margin-bottom:30px;
-
-padding:15px;
-
-background:#f5f5f5;
-
-backdrop-filter:blur(10px);
-
-border-radius:15px;
-
-box-shadow:
-0 4px 10px rgba(0,0,0,.08);
-
-}
-
-input,select{
-
-padding:12px 15px;
-border:none;
-border-radius:12px;
-font-size:16px;
-background:white;
-
-box-shadow:
-0 3px 8px rgba(0,0,0,.08);
-
-min-width:250px;
-
-}
-
-.container{
-
-display:grid;
-grid-template-columns:
-repeat(
-auto-fit,
-minmax(300px,1fr)
-);
-
-gap:20px;
-
-}
-
-.card{
-
-background:white;
-padding:20px;
-border-radius:15px;
-box-shadow:0 4px 10px rgba(0,0,0,.1);
-
-}
-
-.nome{
-
-font-size:22px;
-font-weight:bold;
-margin-bottom:15px;
-
-}
-
-.info{
-
-margin:10px 0;
-font-size:18px;
-
-}
-
-.valor{
-
-font-size:25px;
-font-weight:bold;
-color:green;
-
-}
-
-.mes{
-
-color:#666;
-margin-bottom:15px;
-
-}
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b342b">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="description" content="Leia imagens de rotas, filtre por clusters favoritos e prepare suas solicitações.">
+  <title>Seletor de Rotas • Prévia</title>
+  
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" type="image/svg+xml" href="./icon.svg">
+  <style>
+:root{--deep:#0b342b;--green:#147b61;--mint:#e8f6ef;--bg:#f4f7f5;--text:#1a2c28;--muted:#667b73;--line:#e0ebe5;--white:#fff;--red:#bd443b;--amber:#9c6b1d;--shadow:0 4px 22px rgba(19,58,44,.055)}*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:15px;line-height:1.5}button,input,textarea{font:inherit}button{cursor:pointer}button:disabled{opacity:.5;cursor:not-allowed}.app{max-width:790px;margin:auto;padding-bottom:98px}header.topbar{display:flex;align-items:center;justify-content:space-between;padding:17px 20px;background:white;position:sticky;top:0;z-index:30;border-bottom:1px solid var(--line)}.brand{display:flex;align-items:center;gap:11px}.brand-icon{height:39px;width:39px;background:var(--deep);color:#b4f3d1;display:grid;place-items:center;border-radius:13px;font-weight:900;font-size:27px}.brand b{display:block;line-height:1.15;font-size:16px}.brand small{display:block;color:var(--muted);font-size:11px;padding-top:4px}.icon-btn{border:0;background:#eef5f0;border-radius:12px;width:40px;height:40px;font-size:20px;color:var(--deep)}.hero{background:linear-gradient(135deg,#103f32,#0e5d46 80%,#218164);color:#fff;margin:17px 15px 16px;border-radius:21px;padding:26px 22px 20px}.eyebrow{font-size:10px;letter-spacing:.16em;font-weight:800;color:#c4f9d7}.hero h1{line-height:1.17;margin:14px 0;font-size:clamp(24px,5vw,32px);letter-spacing:-.04em}.hero h1 span{color:#a9efcf}.hero p{color:#d0e7db;margin:0;font-size:13px;max-width:490px}.hero-stats{display:flex;gap:8px;margin-top:23px;border-top:1px solid #ffffff30;padding-top:14px}.hero-stats div{flex:1;min-width:0}.hero-stats b{display:block;font-size:22px;line-height:1.25}.hero-stats span{font-size:10px;color:#c9ded1}.panel{margin:0 15px 15px;background:var(--white);border:1px solid var(--line);border-radius:19px;padding:20px 18px;box-shadow:var(--shadow);scroll-margin-top:90px}.panel-heading{display:flex;align-items:center;gap:12px;margin-bottom:17px}.step{flex:0 0 33px;height:33px;border-radius:11px;background:var(--mint);color:var(--green);display:grid;place-items:center;font-size:12px;font-weight:850}.panel h2{font-size:16px;margin:0;letter-spacing:-.02em}.panel-heading p{font-size:12px;margin:2px 0 0;color:var(--muted)}.cluster-list{display:grid;gap:9px}.cluster-row{display:flex;gap:9px;align-items:center;padding:9px 11px;border:1px solid var(--line);border-radius:12px;background:#fbfdfb}.cluster-priority{border-radius:8px;background:#e8f3e9;color:#30624e;min-width:32px;text-align:center;font-size:12px;font-weight:800;padding:5px}.cluster-name{font-weight:650;flex:1;min-width:0;font-size:14px}.cluster-actions{display:flex;gap:4px}.mini-btn{border:1px solid var(--line);background:#fff;color:#4c665b;border-radius:8px;height:29px;min-width:28px;padding:0 6px}.mini-btn.del{color:var(--red)}.inline-controls{display:flex;gap:8px;margin:13px 0}.inline-controls input{min-width:0;flex:1}.inline-controls input,.field input,textarea{border:1px solid #dbe6df;background:#fff;border-radius:11px;padding:11px 12px;color:var(--text);outline:none;min-height:42px}.inline-controls input:focus,.field input:focus,textarea:focus{border-color:var(--green);box-shadow:0 0 0 3px #147b611a}.config-line{display:flex;align-items:center;justify-content:space-between;gap:15px;border-top:1px solid var(--line);margin-top:16px;padding-top:16px;font-size:13px;font-weight:650}.number-stepper{display:flex;align-items:center;border:1px solid var(--line);border-radius:10px;overflow:hidden}.number-stepper button{border:0;background:#f1f5f2;width:29px;height:33px;font-size:18px}.number-stepper input{width:43px;border:0;text-align:center;appearance:textfield;font-weight:700;outline:none}.number-stepper input::-webkit-outer-spin-button,.number-stepper input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}.btn{border:1px solid transparent;border-radius:11px;padding:11px 15px;font-weight:750;display:inline-flex;justify-content:center;align-items:center;gap:7px;text-decoration:none;font-size:13px;min-height:43px}.btn.primary{background:#167b5f;color:white}.btn.primary:active{background:#0c543f}.btn.outline{background:white;border-color:#cae0d3;color:#1e654b}.btn.ghost{background:#f4f7f5;color:#53665d}.btn.small{padding:8px 11px;min-height:36px;font-size:12px}.btn.full{width:100%}.btn.full span{margin-left:auto}.dropzone{border:1.5px dashed #9ac6b2;background:#f6fcf8;border-radius:14px;min-height:130px;display:flex;align-items:center;justify-content:center;gap:4px;flex-direction:column;color:#1e6d52;padding:15px;text-align:center;cursor:pointer}.drop-emoji{font-size:26px;margin-bottom:2px}.dropzone small{color:#6d8977;font-size:11px;max-width:240px}.dropzone.drag{background:#e3f5e9;border-color:#187952}.file-list{margin-top:10px;display:grid;gap:7px}.file-item{display:flex;align-items:center;gap:10px;padding:8px 10px;background:#f9fcfa;border:1px solid var(--line);border-radius:10px;font-size:12px}.file-item span{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.file-item small{color:var(--muted)}.file-item button{color:var(--red);border:0;background:transparent;font-size:20px}.text-alternative,.advanced{margin:13px 0;color:var(--muted)}summary{cursor:pointer;color:#426e57;font-size:12px;font-weight:700}.text-alternative label{display:block;font-size:12px;margin:10px 0 5px}.text-alternative textarea{width:100%;resize:vertical;font-size:12px}.hint{color:#82938b;font-size:11px;margin:9px 0 0}.progress-box{background:#eaf5ec;border-radius:12px;padding:13px;margin-top:13px}.progress-title{font-weight:750;font-size:12px}.progress-track{height:7px;border-radius:10px;background:#cfdfd4;overflow:hidden;margin:9px 0}.progress-track div{height:100%;background:#1b936b;width:0;transition:width .2s}.progress-box small{color:#567264}.hidden{display:none!important}.result-summary{font-size:12px;color:var(--muted);background:#f4f8f6;border-radius:10px;padding:10px 12px}.result-list{display:grid;gap:8px;margin-top:12px}.route-card{border:1px solid var(--line);background:#fff;border-radius:12px;padding:12px;display:flex;align-items:center;gap:11px}.route-card.unmatched{background:#f9faf9;opacity:.85}.route-card.review{border-color:#e9d6a6;background:#fffdf7}.route-card label{display:flex;align-items:center;flex:1;gap:11px;min-width:0;cursor:pointer}.route-card input[type=checkbox]{height:19px;width:19px;accent-color:#177b5e}.route-info{min-width:0;flex:1}.route-info strong{display:block;font-size:15px;line-height:1.3}.route-info small{display:block;color:#778981;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.badge{border-radius:8px;padding:4px 7px;font-size:10px;font-weight:800;background:#eaf5ef;color:#257452}.badge.warn{background:#fff1d7;color:#936417}.badge.off{background:#f1f3f2;color:#697b72}.result-controls{display:flex;gap:8px;margin-top:15px;flex-wrap:wrap}.selection-footer{background:#e7f5ea;border-radius:13px;padding:13px;margin-top:14px;display:flex;align-items:center;justify-content:space-between;gap:10px}.selection-footer strong{display:block;font-size:14px}.selection-footer small{font-size:10px;color:#647f6f}.request-list{display:grid;gap:9px;margin:12px 0}.request-card{border:1px solid var(--line);padding:13px;border-radius:12px}.request-card-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}.request-card-top strong{font-size:16px}.request-card-top span{font-size:12px;color:#678378}.request-actions{display:flex;gap:7px;flex-wrap:wrap}.request-actions button{flex:1}.warning{background:#fff7e6;color:#846016;border-radius:11px;padding:11px;font-size:12px;border:1px solid #f2e3bd}.tip{padding:11px;border-radius:11px;background:#f3f8f6;color:#5d7469;font-size:11px}.field{margin-bottom:14px}.field label{display:block;font-weight:700;font-size:12px;margin-bottom:6px}.field input{width:100%}.advanced{border:1px solid var(--line);border-radius:11px;padding:10px 12px}.advanced p{font-size:11px}hr{border:0;border-top:1px solid var(--line);margin:20px 0}h3{font-size:14px;margin:8px 0}.history-list{font-size:12px;margin-bottom:12px}.history-row{display:flex;justify-content:space-between;gap:15px;padding:8px 0;border-bottom:1px solid var(--line)}.history-row small{color:var(--muted)}.danger{color:var(--red)!important}.empty{font-size:13px;color:#93a49b;text-align:center;padding:20px 4px}.toast{position:fixed;bottom:90px;left:50%;transform:translate(-50%,20px);background:#162f26;color:#fff;border-radius:12px;padding:10px 16px;min-width:190px;max-width:90vw;text-align:center;font-size:12px;box-shadow:0 6px 26px #05180e60;opacity:0;pointer-events:none;transition:.2s;z-index:100}.toast.visible{transform:translate(-50%,0);opacity:1}.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);max-width:790px;width:100%;display:flex;justify-content:space-around;background:#fff;border-top:1px solid var(--line);padding:7px 6px calc(8px + env(safe-area-inset-bottom));z-index:35}.bottom-nav button{display:flex;flex-direction:column;gap:1px;align-items:center;font-size:10px;color:#86978e;border:0;background:none;padding:4px 12px;border-radius:9px;min-width:65px}.bottom-nav button span{font-size:21px;line-height:1.3}.bottom-nav button.active{color:#167b5f;font-weight:850;background:#e7f6ed}.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}@media (min-width:700px){.panel{padding:23px 26px}.hero{padding:32px 30px}.panel,.hero{margin-left:20px;margin-right:20px}.hero p{font-size:15px}}@media (max-width:350px){.btn{font-size:11px}.panel{padding:16px 12px}.hero{padding:21px 16px}.bottom-nav button{min-width:60px}.request-actions button{flex:0 0 100%}}
 
 </style>
-
+  
 </head>
-
 <body>
-
-<h1>
-Resumo de Pagamentos
-</h1>
-
-<br>
-
-<div class="topo">
-
-<input
-id="pesquisa"
-placeholder="Pesquisar funcionário..."
->
-
-<select id="mesFiltro">
-
-<option value="">
-Todos os meses
-</option>
-
-</select>
-
-</div>
-
-<div
-class="container"
-id="cards"
-></div>
-
+  <div class="app">
+    <header class="topbar">
+      <div class="brand"><div class="brand-icon" aria-hidden="true">↗</div><div><b>Seletor de Rotas</b><small>Prévia de desenvolvimento</small></div></div>
+      <button class="icon-btn" id="settingsShortcut" aria-label="Abrir configurações">⚙</button>
+    </header>
+    <main>
+      <section class="hero">
+        <span class="eyebrow">SEU DIA, MAIS SIMPLES</span>
+        <h1>Suas melhores rotas.<br><span>Sem procurar uma por uma.</span></h1>
+        <p>Importe as imagens que chegam pelo WhatsApp. O app encontra suas regiões favoritas e organiza as solicitações.</p>
+        <div class="hero-stats">
+          <div><b id="heroFound">0</b><span>Rotas encontradas</span></div>
+          <div><b id="heroSelected">0</b><span>Selecionadas</span></div>
+          <div><b id="heroSent">0</b><span>Concluídas hoje</span></div>
+        </div>
+      </section>
+      <section class="panel" id="stepPreferences">
+        <div class="panel-heading"><div class="step">01</div><div><h2>Clusters favoritos</h2><p>A ordem define a prioridade de seleção.</p></div></div>
+        <div id="clusterList" class="cluster-list"></div>
+        <div class="inline-controls">
+          <input id="newCluster" list="clusterSuggestions" type="text" placeholder="Adicionar outro cluster" maxlength="50" autocomplete="off">
+          <datalist id="clusterSuggestions"></datalist>
+          <button class="btn outline small" id="addCluster">Adicionar</button>
+        </div>
+        <div class="config-line"><label for="maxRoutes">Máximo de rotas por análise</label><div class="number-stepper"><button id="limitDown" aria-label="Diminuir limite">−</button><input id="maxRoutes" type="number" min="1" max="50" value="10" inputmode="numeric"><button id="limitUp" aria-label="Aumentar limite">+</button></div></div>
+      </section>
+      <section class="panel" id="stepImport">
+        <div class="panel-heading"><div class="step">02</div><div><h2>Importar imagens</h2><p>Você pode adicionar várias imagens de uma só vez.</p></div></div>
+        <label class="dropzone" id="dropzone" for="imageInput">
+          <span class="drop-emoji">▧</span><strong>Escolher imagens</strong>
+          <small>Capturas de tela e fotos de planilhas • JPG, PNG ou WebP</small>
+        </label>
+        <input id="imageInput" class="sr-only" type="file" accept="image/*" multiple>
+        <div id="fileList" class="file-list"></div>
+        <details class="text-alternative"><summary>Ou colar texto de uma planilha</summary><label for="pasteText">Uma rota e seu cluster por linha:</label><textarea id="pasteText" rows="4" placeholder="B-12  MOTO  Canhema&#10;V-17  MOTO  Taboão"></textarea></details>
+        <button class="btn primary full" id="analyzeBtn">Analisar e encontrar rotas <span>→</span></button>
+        <p class="hint">As imagens são processadas no seu aparelho. Na primeira análise, o mecanismo de leitura precisa de internet para carregar.</p>
+        <div id="progressBox" class="progress-box hidden" aria-live="polite"><div class="progress-title" id="progressTitle">Preparando leitura…</div><div class="progress-track"><div id="progressBar"></div></div><small id="progressDetail">Aguarde</small></div>
+      </section>
+      <section class="panel" id="stepResults">
+        <div class="panel-heading"><div class="step">03</div><div><h2>Rotas identificadas</h2><p>Confira os dados antes de abrir os formulários.</p></div></div>
+        <div class="result-summary" id="resultSummary">Nenhuma análise realizada ainda.</div>
+        <div id="resultList" class="result-list"></div>
+        <div id="resultControls" class="result-controls hidden"><button class="btn outline small" id="selectAll">Selecionar até o limite</button><button class="btn ghost small" id="deselectAll">Desmarcar todas</button></div>
+        <div id="selectionFooter" class="selection-footer hidden"><div><strong id="selectionCount">0 rotas</strong><small>Preparadas para solicitação</small></div><button class="btn primary" id="goRequests">Ver solicitações →</button></div>
+      </section>
+      <section class="panel" id="stepRequests">
+        <div class="panel-heading"><div class="step">04</div><div><h2>Solicitar rotas</h2><p>Um formulário separado para cada código de rota.</p></div></div>
+        <div class="warning" id="formNotice">O formulário exige o envio pelo próprio Google. Abrir um link não significa que a resposta foi enviada. Confirme o envio nele e depois registre aqui.</div>
+        <div id="requestList" class="request-list"><p class="empty">Selecione rotas na etapa anterior.</p></div>
+        <div class="tip">💡 Com os identificadores dos campos configurados, abriremos o formulário pré-preenchido. Sem eles, o código da rota será copiado para você colar no Google Forms.</div>
+      </section>
+      <section class="panel" id="stepSettings">
+        <div class="panel-heading"><div class="step">⚙</div><div><h2>Minhas informações</h2><p>Salvas somente neste navegador. Não envie seus dados no chat.</p></div></div>
+        <div class="field"><label for="driverId">ID do entregador</label><input id="driverId" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="Somente números"></div>
+        <div class="field"><label for="driverPhone">Telefone para contato</label><input id="driverPhone" type="tel" inputmode="tel" autocomplete="tel" placeholder="(11) 99999-9999"></div>
+        <p class="hint">O e-mail é registrado pelo Google Forms, com a conta que estiver conectada no navegador.</p>
+        <details class="advanced"><summary>Preenchimento avançado (opcional)</summary>
+          <p>Os IDs <code>entry.123...</code> dos campos ainda precisam ser confirmados. Não inventamos esses números; informe-os somente se já os conhece. Assim poderemos abrir formulários previamente preenchidos.</p>
+          <div class="field"><label for="entryRoute">ID do campo "Rota"</label><input id="entryRoute" type="text" placeholder="entry.123456789"></div>
+          <div class="field"><label for="entryDriverId">ID do campo "ID do entregador"</label><input id="entryDriverId" type="text" placeholder="entry.123456789"></div>
+          <div class="field"><label for="entryPhone">ID do campo "Telefone"</label><input id="entryPhone" type="text" placeholder="entry.123456789"></div>
+        </details>
+        <button class="btn primary full" id="saveSettings">Salvar configurações</button>
+        <hr>
+        <h3>Histórico</h3><div id="historyList" class="history-list"></div>
+        <button class="btn outline small" id="exportHistory">Exportar histórico CSV</button>
+        <button class="btn ghost small danger" id="clearHistory">Limpar histórico</button>
+      </section>
+    </main>
+    <nav class="bottom-nav" aria-label="Navegação do app"><button data-target="stepPreferences"><span>☆</span>Clusters</button><button data-target="stepImport" class="active"><span>▧</span>Imagens</button><button data-target="stepResults"><span>☷</span>Rotas</button><button data-target="stepRequests"><span>↗</span>Solicitar</button></nav>
+    <div role="status" aria-live="polite" id="toast" class="toast"></div>
+  </div>
 <script>
-
-const API="https://script.google.com/macros/s/AKfycbwFbDbgZDR3GilFms1IK3_qF_3a5qA879ZVAXF9g31Bb3k4RtTw0W9LTF44RdsFLGQBtw/exec";
-
-let dados=[];
-
-async function carregar(){
-
-const resposta=
-await fetch(API);
-
-dados=
-await resposta.json();
-
-popularMeses();
-
-renderizar();
-
-}
-
-function popularMeses(){
-
-const select =
-document.getElementById(
-"mesFiltro"
-);
-
-// limpa tudo e mantém apenas a opção padrão
-select.innerHTML=
-`
-<option value="">
-Todos os meses
-</option>
-`;
-
-// remove vazios e #N/A
-const meses = [
-...new Set(
-dados
-.filter(
-x =>
-x.mes &&
-x.mes != "#N/A"
-)
-.map(
-x => x.mes
-)
-)
-];
-
-// ordenação correta
-meses.sort((a,b)=>{
-
-const n1=
-parseInt(
-a.match(/\d+/)?.[0] || 0
-);
-
-const n2=
-parseInt(
-b.match(/\d+/)?.[0] || 0
-);
-
-return n1-n2;
-
+/* Seletor de Rotas — regras de leitura e seleção (sem dependências). */
+(function (root, factory) {
+  const api = factory();
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  root.RouteEngine = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  'use strict';
+  const PRESETS = [
+    'Canhema', 'Taboão', 'Vila Capela', 'Centro SBC', 'Americanópolis',
+    'Vila São Pedro', 'Dos Casas', 'Ferrazópolis', 'Baeta', 'Rudge Ramos',
+    'Jardim Clímax', 'Batistini', 'Serraria', 'Planalto', 'Pedreira',
+    'Demarchi', 'Conceição', 'Cooperativa', 'Assunção', 'Piraporinha',
+    'Inamar', 'Casa Grande', 'Vila Palmares', 'Parque das Garças',
+    'Eldorado', 'Las Palmas', 'Riacho Grande', 'Balneário'
+  ];
+  const FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSdgNe0ViWtpMASsPOIDwEE3yqnCuzoVEwQWUgI1-C3PCjM-nQ/viewform';
+  const ROUTE_RX = /\b([A-Z]{1,3})\s*[-‐‑–—]\s*([0-9OIL]{1,3})\b/gi;
+  const clean = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/\s+/g, ' ').trim();
+  function normalizeCluster(s) {
+    return clean(s).replace(/\s*[-–—]\s*Z\b/g, '').replace(/\b(OBS|BACKLOG|MOTO|VEICULO|CLUSTER)\b/g, '').replace(/[^A-Z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+  function normalizeRoute(s) {
+    const text = clean(s).replace(/\s+/g, '');
+    const match = /^([A-Z]{1,3})[-‐‑–—]([0-9OIL]{1,3})$/.exec(text);
+    if (!match) return null;
+    // Somente o sufixo numérico recebe normalização de caracteres típicos do OCR.
+    const number = match[2].replace(/O/g, '0').replace(/[IL]/g, '1');
+    return `${match[1]}-${Number(number)}`;
+  }
+  function findRoutes(text) {
+    return Array.from(String(text || '').matchAll(new RegExp(ROUTE_RX.source, ROUTE_RX.flags)))
+      .map(m => normalizeRoute(m[0])).filter(Boolean);
+  }
+  function levenshtein(a, b) {
+    const previous = Array.from({length: b.length + 1}, (_, i) => i);
+    for (let i = 1; i <= a.length; i++) {
+      let old = previous[0]; previous[0] = i;
+      for (let j = 1; j <= b.length; j++) {
+        const before = previous[j];
+        previous[j] = Math.min(previous[j] + 1, previous[j - 1] + 1, old + (a[i - 1] === b[j - 1] ? 0 : 1));
+        old = before;
+      }
+    }
+    return previous[b.length];
+  }
+  function identifyCluster(rowText, clusters) {
+    const options = [...new Set([...PRESETS, ...(clusters || [])])];
+    const row = normalizeCluster(String(rowText).replace(new RegExp(ROUTE_RX.source, 'gi'), ' '));
+    if (!row) return {name: null, score: 0};
+    let best = {name: null, score: 0};
+    for (const name of options) {
+      const candidate = normalizeCluster(name);
+      if (!candidate) continue;
+      // Nome encontrado por inteiro na linha (independente do sufixo -z).
+      let score = (row === candidate || row.includes(candidate)) ? 1 : 0;
+      if (score !== 1) {
+        const rowWords = row.split(/\s+/);
+        const candidateLength = candidate.split(/\s+/).length;
+        for (let len = Math.max(1, candidateLength - 1); len <= candidateLength + 1; len++) {
+          if (len > rowWords.length) continue;
+          for (let i = 0; i + len <= rowWords.length; i++) {
+            const segment = rowWords.slice(i, i + len).join(' ');
+            const ratio = 1 - levenshtein(segment, candidate) / Math.max(segment.length, candidate.length);
+            score = Math.max(score, ratio);
+          }
+        }
+      }
+      if (score > best.score) best = {name, score};
+    }
+    // Atribuições vagas não devem gerar formulários.
+    if (best.score < 0.78) return {name: null, score: best.score};
+    return best;
+  }
+  function parseRows(rows, clusters, source) {
+    const result = [];
+    for (const row of rows) {
+      const line = String(row.text || '').replace(/\s+/g, ' ').trim();
+      const routes = findRoutes(line);
+      if (!routes.length) continue;
+      const cluster = identifyCluster(line, clusters);
+      for (const route of routes) {
+        const confidence = typeof row.confidence === 'number' ? Math.round(row.confidence) : 100;
+        result.push({
+          route, cluster: cluster.name,
+          confidence, clusterConfidence: Math.round(cluster.score * 100),
+          needsReview: confidence < 65 || cluster.score < 0.86,
+          source: source || 'Texto', raw: line
+        });
+      }
+    }
+    return result;
+  }
+  function rowsFromBlocks(blocks) {
+    const words = [];
+    for (const block of blocks || [])
+      for (const paragraph of block.paragraphs || [])
+        for (const line of paragraph.lines || [])
+          for (const word of line.words || []) {
+            if (!word.text || !word.bbox) continue;
+            words.push({text: word.text, confidence: word.confidence,
+              x: (word.bbox.x0 + word.bbox.x1) / 2,
+              y: (word.bbox.y0 + word.bbox.y1) / 2,
+              height: Math.max(1, word.bbox.y1 - word.bbox.y0)});
+          }
+    words.sort((a, b) => a.y - b.y || a.x - b.x);
+    const groups = [];
+    for (const w of words) {
+      let best = null, delta = Infinity;
+      for (const group of groups) {
+        const tolerance = Math.max(7, Math.min(24, (group.height + w.height) * 0.31));
+        if (Math.abs(group.y - w.y) <= tolerance && Math.abs(group.y - w.y) < delta) {
+          best = group; delta = Math.abs(group.y - w.y);
+        }
+      }
+      if (!best) { best = {y: w.y, height: w.height, words: []}; groups.push(best); }
+      best.words.push(w);
+      best.y = best.words.reduce((s, item) => s + item.y, 0) / best.words.length;
+      best.height = best.words.reduce((s, item) => s + item.height, 0) / best.words.length;
+    }
+    return groups.sort((a,b) => a.y - b.y).map(group => {
+      const sorted = group.words.sort((a,b) => a.x - b.x);
+      return {text: sorted.map(w => w.text).join(' '),
+        confidence: sorted.reduce((s,w) => s + (Number.isFinite(w.confidence) ? w.confidence : 70), 0) / sorted.length};
+    });
+  }
+  function parseText(text, clusters, source) {
+    return parseRows(String(text || '').split(/\r?\n/).map(s => ({text:s, confidence:100})), clusters, source);
+  }
+  function consolidate(items, favorites, limit, submittedToday) {
+    const wanted = [...new Set((favorites || []).map(normalizeCluster))];
+    const already = new Set(submittedToday || []);
+    const grouped = new Map();
+    for (const item of items || []) {
+      if (!item.route || !normalizeRoute(item.route)) continue;
+      const route = normalizeRoute(item.route);
+      if (!grouped.has(route)) grouped.set(route, {...item, route, conflict: false});
+      else {
+        const existing = grouped.get(route);
+        if (existing.cluster && item.cluster && normalizeCluster(existing.cluster) !== normalizeCluster(item.cluster)) {
+          existing.conflict = true;
+          existing.needsReview = true;
+        }
+        // Se a primeira leitura não identificou o cluster, usar leitura posterior.
+        if (!existing.cluster && item.cluster) existing.cluster = item.cluster;
+        existing.needsReview = existing.needsReview || item.needsReview;
+      }
+    }
+    const all = [...grouped.values()].map(item => ({
+      ...item, priority: wanted.indexOf(normalizeCluster(item.cluster)),
+      alreadySent: already.has(item.route),
+      selected: false
+    }));
+    all.sort((a, b) => {
+      const aRank = a.priority < 0 ? 999 : a.priority;
+      const bRank = b.priority < 0 ? 999 : b.priority;
+      return aRank - bRank || a.route.localeCompare(b.route, 'pt-BR', {numeric: true});
+    });
+    let chosen = 0;
+    for (const item of all) {
+      if (item.priority >= 0 && !item.needsReview && !item.alreadySent && chosen < Number(limit || 1)) {
+        item.selected = true; chosen++;
+      }
+    }
+    return all;
+  }
+  function prefilledUrl(formUrl, entries, values) {
+    const url = new URL(formUrl || FORM_URL);
+    const routeId = String(entries?.route || '').replace(/^entry\./, '');
+    if (!/^\d{5,}$/.test(routeId)) return null;
+    url.searchParams.set('usp', 'pp_url');
+    url.searchParams.set(`entry.${routeId}`, values.route);
+    for (const field of ['driverId', 'phone']) {
+      const key = String(entries?.[field] || '').replace(/^entry\./, '');
+      if (/^\d{5,}$/.test(key) && values[field]) url.searchParams.set(`entry.${key}`, values[field]);
+    }
+    return url.toString();
+  }
+  return {PRESETS, FORM_URL, normalizeCluster, normalizeRoute, findRoutes, identifyCluster,
+    parseRows, rowsFromBlocks, parseText, consolidate, prefilledUrl};
 });
-
-meses.forEach(m=>{
-
-select.innerHTML +=
-`
-<option value="${m}">
-${m}
-</option>
-`;
-
-});
-
-}
-
-function renderizar(){
-
-const pesquisa=
-document
-.getElementById(
-"pesquisa"
-)
-.value
-.toLowerCase();
-
-const mes=
-document
-.getElementById(
-"mesFiltro"
-)
-.value;
-
-const cards=
-document.getElementById(
-"cards"
-);
-
-cards.innerHTML="";
-
-const filtrado=
-dados.filter(f=>{
-
-const nomeOk=
-f.nome
-.toLowerCase()
-.includes(
-pesquisa
-);
-
-const mesOk=
-!mes ||
-f.mes==mes;
-
-return nomeOk &&
-mesOk;
-
-});
-
-
-const agrupado={};
-
-filtrado.forEach(item=>{
-
-if(
-!agrupado[item.nome]
-){
-
-agrupado[item.nome]={
-
-nome:item.nome,
-horas:0,
-total:0,
-pago:0
-
-};
-
-}
-
-agrupado[
-item.nome
-]
-.horas+=
-Number(
-item.horas
-);
-
-agrupado[
-item.nome
-]
-.total+=
-Number(
-item.total
-);
-
-agrupado[
-item.nome
-]
-.pago+=
-Number(
-item.pago
-);
-
-});
-
-
-Object.values(
-agrupado
-)
-.forEach(func=>{
-
-const saldo=
-func.total-
-func.pago;
-
-cards.innerHTML+=`
-
-<div class="card">
-
-<div class="nome">
-
-👤 ${func.nome}
-
-</div>
-
-<div class="info">
-
-⏱ Horas:
-${func.horas.toFixed(2)}
-
-</div>
-
-<div class="info">
-
-💰 Valor Total:
-R$ ${func.total.toFixed(2)}
-
-</div>
-
-<div class="info">
-
-✅ Valor Pago:
-R$ ${func.pago.toFixed(2)}
-
-</div>
-
-<div class="info valor">
-
-📊 Saldo:
-R$ ${saldo.toFixed(2)}
-
-</div>
-
-</div>
-
-`;
-
-});
-
-}
-
-document
-.getElementById(
-"pesquisa"
-)
-.addEventListener(
-"input",
-renderizar
-);
-
-document
-.getElementById(
-"mesFiltro"
-)
-.addEventListener(
-"change",
-renderizar
-);
-
-carregar();
-
-setInterval(()=>{
-
-const mesAtual =
-document.getElementById(
-"mesFiltro"
-).value;
-
-const pesquisaAtual =
-document.getElementById(
-"pesquisa"
-).value;
-
-carregar().then(()=>{
-
-document.getElementById(
-"mesFiltro"
-).value=mesAtual;
-
-document.getElementById(
-"pesquisa"
-).value=pesquisaAtual;
-
-renderizar();
-
-});
-
-},30000);
 
 </script>
+<script>
+(function () {
+  'use strict';
+  const E = window.RouteEngine;
+  const $ = (id) => document.getElementById(id);
+  const K = 'seletor_rotas_preview_v1';
+  const defaults = {favorites:['Canhema','Taboão','Vila Capela'],limit:10,driverId:'',driverPhone:'',entries:{route:'',driverId:'',phone:''},history:[]};
+  let stored = {};
+  try { stored = JSON.parse(localStorage.getItem(K) || '{}'); } catch (_) {}
+  const state = {...defaults,...stored,entries:{...defaults.entries,...(stored.entries || {})},
+    files:[], matches:[], rows:[], showAll:false, running:false, opened:new Set()};
+  state.favorites = Array.isArray(state.favorites) ? state.favorites : [...defaults.favorites];
+  state.history = Array.isArray(state.history) ? state.history : [];
+  const save = () => {
+    try { localStorage.setItem(K, JSON.stringify({favorites:state.favorites,limit:state.limit,driverId:state.driverId,driverPhone:state.driverPhone,entries:state.entries,history:state.history})); }
+    catch (_) { toast('Não foi possível salvar neste navegador.'); }
+  };
+  const escape = (v) => String(v ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  const dayKey = (d=new Date()) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const sentToday = () => state.history.filter(h=>h.date === dayKey()).map(h=>h.route);
+  let toastTimeout;
+  function toast(message) {
+    const el = $('toast'); el.textContent = message; el.classList.add('visible');
+    clearTimeout(toastTimeout); toastTimeout = setTimeout(()=>el.classList.remove('visible'),3300);
+  }
+  function nav(id) {
+    $(id).scrollIntoView({behavior:'smooth',block:'start'});
+    document.querySelectorAll('.bottom-nav button').forEach(b=>b.classList.toggle('active',b.dataset.target===id));
+  }
+  document.querySelectorAll('.bottom-nav button').forEach(b=>b.addEventListener('click',()=>nav(b.dataset.target)));
+  $('settingsShortcut').onclick=()=>nav('stepSettings');
+  $('clusterSuggestions').innerHTML=E.PRESETS.map(s=>`<option value="${escape(s)}">`).join('');
+  function renderFavorites() {
+    $('clusterList').innerHTML = state.favorites.length ? state.favorites.map((s,i)=>`
+      <div class="cluster-row"><span class="cluster-priority">${i+1}º</span><span class="cluster-name">${escape(s)}</span>
+      <div class="cluster-actions"><button class="mini-btn" data-action="up" data-index="${i}" aria-label="Subir prioridade" ${i===0?'disabled':''}>↑</button>
+      <button class="mini-btn" data-action="down" data-index="${i}" aria-label="Descer prioridade" ${i===state.favorites.length-1?'disabled':''}>↓</button>
+      <button class="mini-btn del" data-action="del" data-index="${i}" aria-label="Remover cluster">×</button></div></div>`).join('')
+      : '<p class="empty">Adicione ao menos um cluster favorito.</p>';
+    $('maxRoutes').value=state.limit;
+  }
+  $('clusterList').addEventListener('click',(e)=>{
+    const btn=e.target.closest('button[data-action]'); if(!btn)return;
+    const index=Number(btn.dataset.index), action=btn.dataset.action;
+    if (action==='del')state.favorites.splice(index,1);
+    else {const other=index+(action==='up'?-1:1); if(other<0||other>=state.favorites.length)return;
+      [state.favorites[index],state.favorites[other]]=[state.favorites[other],state.favorites[index]];}
+    save();renderFavorites();rebuildRows();
+  });
+  function addCluster(){
+    const name=$('newCluster').value.trim().replace(/\s+/g,' ');
+    if(!name)return;
+    if(state.favorites.some(s=>E.normalizeCluster(s)===E.normalizeCluster(name))){toast('Esse cluster já está na lista.');return;}
+    // A lista de nomes conhecidos pode crescer conforme o usuário importa dados.
+    if(name.length>50){toast('Nome do cluster muito longo.');return;}
+    state.favorites.push(name);$('newCluster').value='';save();renderFavorites();rebuildRows();
+  }
+  $('addCluster').onclick=addCluster;
+  $('newCluster').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();addCluster();}};
+  function updateLimit(number){state.limit=Math.max(1,Math.min(50,Math.round(Number(number)||1)));$('maxRoutes').value=state.limit;save();rebuildRows();}
+  $('limitDown').onclick=()=>updateLimit(state.limit-1);
+  $('limitUp').onclick=()=>updateLimit(state.limit+1);
+  $('maxRoutes').onchange=(e)=>updateLimit(e.target.value);
+  function handleNewFiles(fileList){
+    for(const file of Array.from(fileList || [])){
+      if(!file.type.startsWith('image/')){toast(`Arquivo não suportado: ${file.name}`);continue;}
+      if(file.size>25*1024*1024){toast(`Imagem muito grande: ${file.name}`);continue;}
+      if(!state.files.some(f=>f.name===file.name&&f.size===file.size&&f.lastModified===file.lastModified))state.files.push(file);
+    }
+    renderFiles();
+  }
+  $('imageInput').onchange=e=>{handleNewFiles(e.target.files);e.target.value='';};
+  const dropzone=$('dropzone');
+  ['dragenter','dragover'].forEach(type=>dropzone.addEventListener(type,e=>{e.preventDefault();dropzone.classList.add('drag');}));
+  ['dragleave','drop'].forEach(type=>dropzone.addEventListener(type,e=>{e.preventDefault();dropzone.classList.remove('drag');}));
+  dropzone.addEventListener('drop',e=>handleNewFiles(e.dataTransfer.files));
+  function renderFiles(){
+    $('fileList').innerHTML=state.files.map((file,i)=>`<div class="file-item"><span>▧ ${escape(file.name)}</span><small>${Math.round(file.size/1024)} KB</small><button data-index="${i}" aria-label="Remover imagem">×</button></div>`).join('');
+  }
+  $('fileList').addEventListener('click',e=>{const btn=e.target.closest('button[data-index]');if(!btn)return;state.files.splice(Number(btn.dataset.index),1);renderFiles();});
+  function progress(text,percent,detail){
+    $('progressBox').classList.remove('hidden');$('progressTitle').textContent=text;
+    $('progressBar').style.width=`${Math.min(100,Math.max(0,percent))}%`;$('progressDetail').textContent=detail;
+  }
+  function loadScript(url){return new Promise((resolve,reject)=>{
+    if(window.Tesseract){resolve();return;}
+    const el=document.createElement('script');el.src=url;el.onload=resolve;el.onerror=()=>reject(new Error('Não foi possível baixar o leitor de imagens. Verifique sua internet.'));document.head.appendChild(el);
+  });}
+  async function imageToCanvas(file){
+    const image=new Image();const src=URL.createObjectURL(file);
+    try {
+      await new Promise((resolve,reject)=>{image.onload=resolve;image.onerror=()=>reject(new Error('Imagem inválida'));image.src=src;});
+      const factor=Math.min(2.15,2400/Math.max(image.naturalWidth,image.naturalHeight));
+      const width=Math.max(1,Math.round(image.naturalWidth*factor));
+      const height=Math.max(1,Math.round(image.naturalHeight*factor));
+      const canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;
+      const ctx=canvas.getContext('2d',{willReadFrequently:true});
+      if(!ctx)throw new Error('Canvas indisponível no navegador');
+      ctx.fillStyle='#fff';ctx.fillRect(0,0,width,height);
+      ctx.filter='contrast(1.15)';ctx.drawImage(image,0,0,width,height);
+      return canvas;
+    } finally {URL.revokeObjectURL(src);}
+  }
+  function extractResults(response, fileName){
+    const result=response?.data||{};
+    const blockRows=E.rowsFromBlocks(result.blocks);
+    const parsed=E.parseRows(blockRows,state.favorites,fileName);
+    if(parsed.length)return parsed;
+    // Leitura só-texto é um fallback; não vincula colunas diferentes sem evidência.
+    return E.parseText(result.text||'',state.favorites,fileName);
+  }
+  $('analyzeBtn').onclick=async()=>{
+    if(state.running)return;
+    const paste=$('pasteText').value.trim();
+    if(!state.files.length&&!paste){toast('Adicione imagens ou cole algumas linhas da planilha.');nav('stepImport');return;}
+    state.running=true;$('analyzeBtn').disabled=true;
+    state.matches=[];state.rows=[];
+    let worker=null;
+    try{
+      progress('Preparando análise…',3,'Seus arquivos não são enviados para um servidor.');
+      if(paste)state.matches.push(...E.parseText(paste,state.favorites,'Texto colado'));
+      if(state.files.length){
+        await loadScript('https://cdn.jsdelivr.net/npm/tesseract.js@6/dist/tesseract.min.js');
+        progress('Iniciando leitor de imagens…',7,'O primeiro acesso pode levar algum tempo.');
+        worker=await window.Tesseract.createWorker('por',1,{logger:m=>{
+          if(m.status==='recognizing text'){
+            const base=10+82*(Math.max(0,state.currentImage||0)/state.files.length);
+            const share=80/Math.max(1,state.files.length);
+            progress('Lendo texto da imagem…',base+(m.progress||0)*share,`Imagem ${(state.currentImage||0)+1} de ${state.files.length}`);
+          }
+        }});
+        for(let i=0;i<state.files.length;i++){
+          state.currentImage=i;progress(`Lendo ${state.files[i].name}`,10+i*80/state.files.length,`Imagem ${i+1} de ${state.files.length}`);
+          try{
+            const canvas=await imageToCanvas(state.files[i]);
+            const result=await worker.recognize(canvas,{}, {blocks:true});
+            state.matches.push(...extractResults(result,state.files[i].name));
+            canvas.width=0;canvas.height=0;
+          }catch(err){toast(`Falha em ${state.files[i].name}: ${err.message}`);}
+        }
+      }
+      progress('Análise concluída!',100,`${state.matches.length} registros reconhecidos antes de eliminar repetidos.`);
+      rebuildRows();nav('stepResults');
+      if(!state.rows.length)toast('Nenhuma rota identificada. Tente imagens mais nítidas ou cole o texto.');
+      else toast('Rotas identificadas. Confira a lista antes de solicitar.');
+    }catch(err){progress('Não foi possível concluir',0,err.message);toast(err.message);rebuildRows();}
+    finally{if(worker)await worker.terminate().catch(()=>{});state.running=false;$('analyzeBtn').disabled=false;}
+  };
+  function rebuildRows(){state.rows=E.consolidate(state.matches,state.favorites,state.limit,sentToday());renderAll();}
+  function renderAll(){renderResults();renderRequests();renderHistory();renderStats();}
+  function renderStats(){
+    $('heroFound').textContent=state.rows.length;
+    $('heroSelected').textContent=state.rows.filter(r=>r.selected).length;
+    $('heroSent').textContent=sentToday().length;
+  }
+  function renderResults(){
+    const wanted=state.rows.filter(r=>r.priority>=0),unknown=state.rows.filter(r=>!r.cluster);
+    const other=state.rows.length-wanted.length-unknown.length;
+    const chosen=state.rows.filter(r=>r.selected).length;
+    $('resultSummary').innerHTML=state.matches.length ? `<strong>${state.rows.length}</strong> rota(s) única(s) identificada(s) · <strong>${wanted.length}</strong> nas suas regiões · ${other} em outros clusters · ${unknown.length} sem cluster seguro.
+      ${other>0?`<button id="toggleAll" class="mini-btn" style="margin-left:5px">${state.showAll?'Ocultar outras':'Mostrar todas'}</button>`:''}`:
+      'Importe as imagens e toque em “Analisar”.';
+    const toggle=$('toggleAll');if(toggle)toggle.onclick=()=>{state.showAll=!state.showAll;renderResults();};
+    const display=state.rows.filter(r=>state.showAll||r.priority>=0||!r.cluster);
+    $('resultList').innerHTML=display.map(r=>{
+      const isLocked=r.alreadySent||r.needsReview||r.priority<0;
+      const label=r.alreadySent?'Registrada hoje':r.conflict?'Cluster divergente':r.needsReview?'Conferir OCR':r.priority<0?'Outro cluster':'Encontrada';
+      const badge=r.needsReview?'warn':r.alreadySent||r.priority<0?'off':'';
+      return `<div class="route-card ${r.needsReview?'review':''} ${r.priority<0?'unmatched':''}">
+        <label><input type="checkbox" data-route="${escape(r.route)}" ${r.selected?'checked':''} ${isLocked?'disabled':''}>
+        <span class="route-info"><strong>${escape(r.route)}</strong><small>${escape(r.cluster||'Cluster não identificado')} • ${escape(r.source)}</small></span></label>
+        <span class="badge ${badge}">${label}</span>
+        <button class="mini-btn" data-fix="${escape(r.route)}" aria-label="Corrigir rota ou cluster">✎</button></div>`;
+    }).join('') || '<p class="empty">Nenhuma rota analisada.</p>';
+    $('resultControls').classList.toggle('hidden',!state.rows.length);
+    $('selectionFooter').classList.toggle('hidden',chosen===0);
+    $('selectionCount').textContent=`${chosen} de ${state.limit} rotas`;
+  }
+  $('resultList').addEventListener('change',e=>{
+    const box=e.target.closest('input[data-route]');if(!box)return;
+    const route=box.dataset.route,item=state.rows.find(r=>r.route===route);
+    if(!item)return;
+    if(box.checked&&state.rows.filter(r=>r.selected).length>=state.limit){box.checked=false;toast(`Limite de ${state.limit} rota(s) atingido.`);return;}
+    if(item.needsReview||item.alreadySent||item.priority<0){box.checked=false;return;}
+    item.selected=box.checked;renderAll();
+  });
+  $('resultList').addEventListener('click',e=>{
+    const btn=e.target.closest('button[data-fix]');if(!btn)return;
+    const item=state.rows.find(r=>r.route===btn.dataset.fix);if(!item)return;
+    const newCode=window.prompt('Código correto da rota (ex.: B-12):',item.route);
+    if(newCode===null)return;
+    const route=E.normalizeRoute(newCode);
+    if(!route){toast('Formato inválido. Use letras-traço-número, como B-12.');return;}
+    const newCluster=window.prompt('Nome do cluster desta rota:',item.cluster||'');if(newCluster===null)return;
+    const name=newCluster.trim();if(!name){toast('Informe um cluster válido.');return;}
+    if(state.matches.some(m=>m.route===route&&m!==item && m.source==='Correção manual'))toast('Confira se a rota já foi lida em outra imagem.');
+    state.matches=state.matches.filter(m=>m.route!==item.route);
+    state.matches.push({route,cluster:name,confidence:100,clusterConfidence:100,needsReview:false,source:'Correção manual',raw:`${route} ${name}`});
+    rebuildRows();toast('Correção aplicada. Confira a seleção.');
+  });
+  $('selectAll').onclick=()=>{let count=0;for(const row of state.rows){row.selected=false;if(row.priority>=0&&!row.needsReview&&!row.alreadySent&&count<state.limit){row.selected=true;count++;}}renderAll();};
+  $('deselectAll').onclick=()=>{state.rows.forEach(r=>r.selected=false);renderAll();};
+  $('goRequests').onclick=()=>nav('stepRequests');
+  function selectedRoutes(){return state.rows.filter(r=>r.selected&&!r.alreadySent);}
+  function renderRequests(){
+    const selected=selectedRoutes();
+    $('requestList').innerHTML=selected.map(item=>{
+      const opened=state.opened.has(item.route);
+      return `<div class="request-card"><div class="request-card-top"><strong>${escape(item.route)}</strong><span>${escape(item.cluster||'')}</span></div>
+        <div class="request-actions"><button class="btn ${opened?'outline':'primary'} small" data-open="${escape(item.route)}">${opened?'Reabrir formulário ↗':'Abrir formulário ↗'}</button>
+        <button class="btn ghost small" data-confirm="${escape(item.route)}">✓ Já enviei</button></div></div>`;
+    }).join('') || '<p class="empty">As rotas selecionadas aparecerão aqui.</p>';
+  }
+  function copyRoute(route){
+    if(navigator.clipboard&&window.isSecureContext)return navigator.clipboard.writeText(route).then(()=>true).catch(()=>false);
+    try{const el=document.createElement('textarea');el.value=route;el.style.position='fixed';el.style.opacity='0';document.body.appendChild(el);el.select();const ok=document.execCommand('copy');el.remove();return Promise.resolve(ok);}catch(_){return Promise.resolve(false);}
+  }
+  $('requestList').addEventListener('click',e=>{
+    const openBtn=e.target.closest('button[data-open]');
+    if(openBtn){
+      const route=openBtn.dataset.open;
+      const url=E.prefilledUrl(E.FORM_URL,state.entries,{route,driverId:state.driverId,phone:state.driverPhone}) || E.FORM_URL;
+      // A abertura ocorre no mesmo gesto para evitar bloqueio de pop-up.
+      const win=window.open(url,'_blank','noopener,noreferrer');
+      copyRoute(route).then(ok=>{toast(ok?`Rota ${route} copiada. Cole no formulário se necessário.`:'Formulário aberto. Digite a rota se ela não aparecer.');});
+      state.opened.add(route);renderRequests();
+      if(!win)toast('Se o formulário não abriu, permita pop-ups ou toque novamente.');
+      return;
+    }
+    const confirmBtn=e.target.closest('button[data-confirm]');if(!confirmBtn)return;
+    const route=confirmBtn.dataset.confirm,item=state.rows.find(r=>r.route===route);
+    if(!item)return;
+    if(!window.confirm(`Você já enviou o formulário da rota ${route} no Google Forms?\n\nEste app não consegue verificar automaticamente o recebimento.`))return;
+    state.history.unshift({route,cluster:item.cluster,date:dayKey(),at:new Date().toISOString(),verified:false});
+    save();rebuildRows();toast(`Rota ${route} registrada no histórico.`);
+  });
+  function renderHistory(){
+    $('historyList').innerHTML=state.history.slice(0,30).map(h=>`<div class="history-row"><span><b>${escape(h.route)}</b> · ${escape(h.cluster||'—')}</span><small>${escape(h.date.split('-').reverse().join('/'))}</small></div>`).join('') || '<p class="empty">Nenhum envio confirmado por você.</p>';
+  }
+  function persistSettings(){
+    state.driverId=$('driverId').value.replace(/\D/g,'');
+    state.driverPhone=$('driverPhone').value.replace(/[^+\d]/g,'');
+    for (const [k,id] of [['route','entryRoute'],['driverId','entryDriverId'],['phone','entryPhone']]){
+      const value=$(id).value.trim();
+      if(value&&!/^(?:entry\.)?\d{5,}$/.test(value)){toast(`ID do campo ${k} inválido. Use entry.123456...`);return;}
+      state.entries[k]=value;
+    }
+    save();toast('Configurações salvas neste aparelho.');
+  }
+  $('saveSettings').onclick=persistSettings;
+  function downloadCSV(){
+    const rows=[['Data','Horario UTC','Rota','Cluster','Confirmacao'],...state.history.map(h=>[h.date,h.at,h.route,h.cluster||'','Informado pelo usuario'])];
+    const csv='\ufeff'+rows.map(r=>r.map(c=>'"'+String(c??'').replace(/"/g,'""')+'"').join(';')).join('\r\n');
+    const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});const url=URL.createObjectURL(blob);
+    const link=document.createElement('a');link.href=url;link.download=`historico_rotas_${dayKey()}.csv`;document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),3000);
+  }
+  $('exportHistory').onclick=downloadCSV;
+  $('clearHistory').onclick=()=>{if(!window.confirm('Remover todo o histórico de envios marcados manualmente neste aparelho?'))return;state.history=[];save();rebuildRows();toast('Histórico apagado.');};
+  // Inicialização
+  $('driverId').value=state.driverId;$('driverPhone').value=state.driverPhone;
+  $('entryRoute').value=state.entries.route;$('entryDriverId').value=state.entries.driverId;$('entryPhone').value=state.entries.phone;
+  renderFavorites();renderAll();
+  if('serviceWorker' in navigator&&location.protocol==='https:'){
+    window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+  }
+})();
 
+</script>
 </body>
-
 </html>

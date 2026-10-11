@@ -1,0 +1,19 @@
+{
+  "name": "Seletor Inteligente de Rotas",
+  "short_name": "Minhas Rotas",
+  "description": "Filtra rotas de imagens por clusters de preferência e prepara solicitações.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4f7f5",
+  "theme_color": "#0b342b",
+  "lang": "pt-BR",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any maskable"
+    }
+  ]
+}
