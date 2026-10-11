@@ -307,7 +307,7 @@
   const knownForm = (url) => VERIFIED_FORMS.find(form => form.aliases.some(alias => urlKey(alias)===urlKey(url))) || null;
   const resolvedFormUrl = (url) => knownForm(url)?.url || url;
   const sameForm = (a,b) => urlKey(resolvedFormUrl(a))===urlKey(resolvedFormUrl(b));
-  const defaults = {favorites:['Canhema','Taboão','Vila Capela'],limit:10,formUrl:E.FORM_URL,driverId:'',driverPhone:'',entries:{route:'',driverId:'',phone:''},history:[]};
+  const defaults = {favorites:['Canhema','Taboão','Vila Capela'],limit:10,formUrl:'https://forms.gle/m2Zs4nSjbHcDELX8A',driverId:'',driverPhone:'',entries:{route:'',driverId:'',phone:''},history:[]};
   let stored = {};
   try { stored = JSON.parse(localStorage.getItem(K) || '{}'); } catch (_) {}
   const state = {...defaults,...stored,entries:{...defaults.entries,...(stored.entries || {})},
@@ -320,7 +320,7 @@
       return u.protocol === 'https:' && ((u.hostname === 'docs.google.com' && u.pathname.startsWith('/forms/')) || (u.hostname === 'forms.gle' && u.pathname.length > 1));
     } catch (_) { return false; }
   };
-  if (!validFormUrl(state.formUrl)) state.formUrl = E.FORM_URL;
+  if (!validFormUrl(state.formUrl)) state.formUrl = defaults.formUrl;
   // Corrige a migração inclusive quando o usuário já salvou um link curto e os campos ficaram vazios.
   // Só atualiza a identificação dos campos; dados pessoais, clusters e histórico permanecem.
   const activeVerifiedForm = knownForm(state.formUrl);
