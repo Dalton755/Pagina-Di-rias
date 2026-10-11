@@ -73,7 +73,9 @@
         <div class="panel-heading"><div class="step">⚙</div><div><h2>Minhas informações</h2><p>Salvas somente neste navegador. Não envie seus dados no chat.</p></div></div>
         <div class="field"><label for="driverId">ID do entregador</label><input id="driverId" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="Somente números"></div>
         <div class="field"><label for="driverPhone">Telefone para contato</label><input id="driverPhone" type="tel" inputmode="tel" autocomplete="tel" placeholder="(11) 99999-9999"></div>
-        <p class="hint">O e-mail é registrado pelo Google Forms, com a conta que estiver conectada no navegador.</p>
+        <div class="field"><label for="formUrl">Link do Google Forms</label><input id="formUrl" type="url" inputmode="url" spellcheck="false" autocomplete="url" placeholder="https://docs.google.com/forms/..." aria-describedby="formUrlHelp"></div>
+        <p class="hint" id="formUrlHelp">Se a empresa trocar o formulário, cole o novo link e toque em <b>Salvar configurações</b>. Aceita links do Google Forms (docs.google.com/forms ou forms.gle).</p>
+        <p class="hint">O e-mail é registrado pelo Google Forms, com a conta que estiver conectada no navegador. Ao mudar de formulário, os IDs de preenchimento avançado serão apagados para evitar usar campos de outro formulário.</p>
         <details class="advanced"><summary>Preenchimento avançado (opcional)</summary>
           <p>Os IDs <code>entry.123...</code> dos campos ainda precisam ser confirmados. Não inventamos esses números; informe-os somente se já os conhece. Assim poderemos abrir formulários previamente preenchidos.</p>
           <div class="field"><label for="entryRoute">ID do campo "Rota"</label><input id="entryRoute" type="text" placeholder="entry.123456789"></div>
@@ -279,15 +281,22 @@
   const E = window.RouteEngine;
   const $ = (id) => document.getElementById(id);
   const K = 'seletor_rotas_preview_v1';
-  const defaults = {favorites:['Canhema','Taboão','Vila Capela'],limit:10,driverId:'',driverPhone:'',entries:{route:'',driverId:'',phone:''},history:[]};
+  const defaults = {favorites:['Canhema','Taboão','Vila Capela'],limit:10,formUrl:E.FORM_URL,driverId:'',driverPhone:'',entries:{route:'',driverId:'',phone:''},history:[]};
   let stored = {};
   try { stored = JSON.parse(localStorage.getItem(K) || '{}'); } catch (_) {}
   const state = {...defaults,...stored,entries:{...defaults.entries,...(stored.entries || {})},
     files:[], matches:[], rows:[], showAll:false, running:false, opened:new Set()};
   state.favorites = Array.isArray(state.favorites) ? state.favorites : [...defaults.favorites];
   state.history = Array.isArray(state.history) ? state.history : [];
+  const validFormUrl = (value) => {
+    try {
+      const u = new URL(String(value).trim());
+      return u.protocol === 'https:' && ((u.hostname === 'docs.google.com' && u.pathname.startsWith('/forms/')) || (u.hostname === 'forms.gle' && u.pathname.length > 1));
+    } catch (_) { return false; }
+  };
+  if (!validFormUrl(state.formUrl)) state.formUrl = E.FORM_URL;
   const save = () => {
-    try { localStorage.setItem(K, JSON.stringify({favorites:state.favorites,limit:state.limit,driverId:state.driverId,driverPhone:state.driverPhone,entries:state.entries,history:state.history})); }
+    try { localStorage.setItem(K, JSON.stringify({favorites:state.favorites,limit:state.limit,driverId:state.driverId,driverPhone:state.driverPhone,formUrl:state.formUrl,entries:state.entries,history:state.history})); }
     catch (_) { toast('Não foi possível salvar neste navegador.'); }
   };
   const escape = (v) => String(v ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
@@ -494,7 +503,7 @@
     const openBtn=e.target.closest('button[data-open]');
     if(openBtn){
       const route=openBtn.dataset.open;
-      const url=E.prefilledUrl(E.FORM_URL,state.entries,{route,driverId:state.driverId,phone:state.driverPhone}) || E.FORM_URL;
+      const url=E.prefilledUrl(state.formUrl,state.entries,{route,driverId:state.driverId,phone:state.driverPhone}) || state.formUrl;
       // A abertura ocorre no mesmo gesto para evitar bloqueio de pop-up.
       const win=window.open(url,'_blank','noopener,noreferrer');
       copyRoute(route).then(ok=>{toast(ok?`Rota ${route} copiada. Cole no formulário se necessário.`:'Formulário aberto. Digite a rota se ela não aparecer.');});
@@ -513,14 +522,28 @@
     $('historyList').innerHTML=state.history.slice(0,30).map(h=>`<div class="history-row"><span><b>${escape(h.route)}</b> · ${escape(h.cluster||'—')}</span><small>${escape(h.date.split('-').reverse().join('/'))}</small></div>`).join('') || '<p class="empty">Nenhum envio confirmado por você.</p>';
   }
   function persistSettings(){
-    state.driverId=$('driverId').value.replace(/\D/g,'');
-    state.driverPhone=$('driverPhone').value.replace(/[^+\d]/g,'');
+    const newUrl=$('formUrl').value.trim();
+    if(!validFormUrl(newUrl)){
+      $('formUrl').focus();
+      toast('Informe um link HTTPS válido do Google Forms.');
+      return;
+    }
+    const nextEntries={...state.entries};
     for (const [k,id] of [['route','entryRoute'],['driverId','entryDriverId'],['phone','entryPhone']]){
       const value=$(id).value.trim();
       if(value&&!/^(?:entry\.)?\d{5,}$/.test(value)){toast(`ID do campo ${k} inválido. Use entry.123456...`);return;}
-      state.entries[k]=value;
+      nextEntries[k]=value;
     }
-    save();toast('Configurações salvas neste aparelho.');
+    const changedForm=newUrl!==state.formUrl;
+    state.formUrl=newUrl;
+    state.driverId=$('driverId').value.replace(/\D/g,'');
+    state.driverPhone=$('driverPhone').value.replace(/[^+\d]/g,'');
+    state.entries=changedForm?{route:'',driverId:'',phone:''}:nextEntries;
+    if(changedForm){
+      $('entryRoute').value='';$('entryDriverId').value='';$('entryPhone').value='';
+    }
+    save();
+    toast(changedForm?'Link salvo! IDs avançados foram limpos para o novo formulário.':'Configurações salvas neste aparelho.');
   }
   $('saveSettings').onclick=persistSettings;
   function downloadCSV(){
@@ -532,7 +555,7 @@
   $('exportHistory').onclick=downloadCSV;
   $('clearHistory').onclick=()=>{if(!window.confirm('Remover todo o histórico de envios marcados manualmente neste aparelho?'))return;state.history=[];save();rebuildRows();toast('Histórico apagado.');};
   // Inicialização
-  $('driverId').value=state.driverId;$('driverPhone').value=state.driverPhone;
+  $('driverId').value=state.driverId;$('driverPhone').value=state.driverPhone;$('formUrl').value=state.formUrl;
   $('entryRoute').value=state.entries.route;$('entryDriverId').value=state.entries.driverId;$('entryPhone').value=state.entries.phone;
   renderFavorites();renderAll();
   if('serviceWorker' in navigator&&location.protocol==='https:'){
