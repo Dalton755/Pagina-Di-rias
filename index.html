@@ -74,10 +74,10 @@
         <div class="field"><label for="driverId">ID do entregador</label><input id="driverId" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="Somente números"></div>
         <div class="field"><label for="driverPhone">Telefone para contato</label><input id="driverPhone" type="tel" inputmode="tel" autocomplete="tel" placeholder="(11) 99999-9999"></div>
         <div class="field"><label for="formUrl">Link do Google Forms</label><input id="formUrl" type="url" inputmode="url" spellcheck="false" autocomplete="url" placeholder="https://docs.google.com/forms/..." aria-describedby="formUrlHelp"></div>
-        <p class="hint" id="formUrlHelp">Se a empresa trocar o formulário, cole o novo link e toque em <b>Salvar configurações</b>. Aceita links do Google Forms (docs.google.com/forms ou forms.gle).</p>
-        <p class="hint">O e-mail é registrado pelo Google Forms, com a conta que estiver conectada no navegador. Ao mudar de formulário, os IDs de preenchimento avançado serão apagados para evitar usar campos de outro formulário.</p>
+        <p class="hint" id="formUrlHelp">Se a empresa trocar o formulário, cole o novo link e toque em <b>Salvar configurações</b>. Os links já reconhecidos são configurados automaticamente. Outros links precisarão de identificação dos campos.</p>
+        <p class="hint">O e-mail é tratado pelo Google Forms usando a conta conectada. Quando um formulário é diferente, os identificadores das perguntas também podem mudar, mesmo que as perguntas sejam iguais.</p>
         <details class="advanced"><summary>Preenchimento avançado (opcional)</summary>
-          <p>O formulário atual já tem os IDs oficiais identificados. Se o link mudar, os novos IDs deverão ser configurados aqui para ativar o preenchimento automático.</p>
+          <p>Nos formulários já reconhecidos, os IDs das perguntas são preenchidos automaticamente. Em um formulário novo, precisamos identificar os campos antes de gerar links pré-preenchidos.</p>
           <div class="field"><label for="entryRoute">ID do campo "Rota"</label><input id="entryRoute" type="text" placeholder="entry.123456789"></div>
           <div class="field"><label for="entryDriverId">ID do campo "ID do entregador"</label><input id="entryDriverId" type="text" placeholder="entry.123456789"></div>
           <div class="field"><label for="entryPhone">ID do campo "Telefone"</label><input id="entryPhone" type="text" placeholder="entry.123456789"></div>
@@ -281,10 +281,32 @@
   const E = window.RouteEngine;
   const $ = (id) => document.getElementById(id);
   const K = 'seletor_rotas_preview_v1';
-  // IDs extraídos da estrutura pública do Google Forms em 11/10/2026, sem enviar respostas.
-  const VERIFIED_FIELDS = Object.freeze({route:'entry.154777964',driverId:'entry.901888441',phone:'entry.520656534'});
-  const isKnownForm = (url) => {try{const u=new URL(url);const base=new URL(E.FORM_URL);return u.origin===base.origin&&u.pathname.replace(/\/$/,'')===base.pathname.replace(/\/$/,'');}catch(_){return false;}};
-  const sameForm = (a,b) => {try{const x=new URL(a),y=new URL(b);return x.origin===y.origin&&x.pathname.replace(/\/$/,'')===y.pathname.replace(/\/$/,'');}catch(_){return false;}};
+  // IDs confirmados na estrutura pública dos formulários; nunca enviamos respostas para conferi-los.
+  // Um link forms.gle pode apontar para outro formulário com perguntas idênticas e IDs distintos.
+  const VERIFIED_FORMS = Object.freeze([
+    {
+      name:'Formulário original',
+      url:E.FORM_URL,
+      aliases:[E.FORM_URL],
+      entries:Object.freeze({route:'entry.154777964',driverId:'entry.901888441',phone:'entry.520656534'})
+    },
+    {
+      name:'Formulário Shopee (link curto)',
+      url:'https://docs.google.com/forms/d/e/1FAIpQLSeIB-X6-5bB1T-gnKvO-dg5eI-pRVFAUH3DJBpyQaFYD884ug/viewform',
+      aliases:[
+        'https://forms.gle/m2Zs4nSjbHcDELX8A',
+        'https://docs.google.com/forms/d/e/1FAIpQLSeIB-X6-5bB1T-gnKvO-dg5eI-pRVFAUH3DJBpyQaFYD884ug/viewform'
+      ],
+      entries:Object.freeze({route:'entry.735045962',driverId:'entry.1132118823',phone:'entry.1335480142'})
+    }
+  ]);
+  const urlKey = (url) => {
+    try {const u=new URL(url);return u.origin+u.pathname.replace(/\/$/,'');}
+    catch (_) {return '';}
+  };
+  const knownForm = (url) => VERIFIED_FORMS.find(form => form.aliases.some(alias => urlKey(alias)===urlKey(url))) || null;
+  const resolvedFormUrl = (url) => knownForm(url)?.url || url;
+  const sameForm = (a,b) => urlKey(resolvedFormUrl(a))===urlKey(resolvedFormUrl(b));
   const defaults = {favorites:['Canhema','Taboão','Vila Capela'],limit:10,formUrl:E.FORM_URL,driverId:'',driverPhone:'',entries:{route:'',driverId:'',phone:''},history:[]};
   let stored = {};
   try { stored = JSON.parse(localStorage.getItem(K) || '{}'); } catch (_) {}
@@ -299,12 +321,10 @@
     } catch (_) { return false; }
   };
   if (!validFormUrl(state.formUrl)) state.formUrl = E.FORM_URL;
-  // Migra configurações antigas: mantém dados pessoais e preenche somente IDs que estavam vazios.
-  if (isKnownForm(state.formUrl)) {
-    for (const key of Object.keys(VERIFIED_FIELDS)) {
-      if (!state.entries[key]) state.entries[key] = VERIFIED_FIELDS[key];
-    }
-  }
+  // Corrige a migração inclusive quando o usuário já salvou um link curto e os campos ficaram vazios.
+  // Só atualiza a identificação dos campos; dados pessoais, clusters e histórico permanecem.
+  const activeVerifiedForm = knownForm(state.formUrl);
+  if (activeVerifiedForm) state.entries={...activeVerifiedForm.entries};
   const save = () => {
     try { localStorage.setItem(K, JSON.stringify({favorites:state.favorites,limit:state.limit,driverId:state.driverId,driverPhone:state.driverPhone,formUrl:state.formUrl,entries:state.entries,history:state.history})); }
     catch (_) { toast('Não foi possível salvar neste navegador.'); }
@@ -497,9 +517,13 @@
   $('goRequests').onclick=()=>nav('stepRequests');
   function selectedRoutes(){return state.rows.filter(r=>r.selected&&!r.alreadySent);}
   function renderRequests(){
-    const ready=Boolean(String(state.entries.route||'').replace(/^entry\./,'').match(/^\d{5,}$/));
+    const active=knownForm(state.formUrl);
+    const shortenedUnknown=!active && urlKey(state.formUrl).startsWith('https://forms.gle/');
+    const ready=!shortenedUnknown && Boolean(String(state.entries.route||'').replace(/^entry\./,'').match(/^\d{5,}$/));
     const missing=[!state.driverId?'ID do entregador':null,!state.driverPhone?'telefone':null].filter(Boolean);
-    $('formNotice').textContent = !ready
+    $('formNotice').textContent = shortenedUnknown
+      ? 'Este link curto ainda não foi identificado. Para evitar um formulário vazio, configure a URL completa do Google Forms e os IDs dos campos.'
+      : !ready
       ? 'Atenção: ainda não temos o identificador do campo Rota neste formulário. O link abrirá sem preencher a rota. Configure os IDs dos campos antes de enviar.'
       : missing.length
         ? `A rota será pré-preenchida. Para preencher também ${missing.join(' e ')}, salve essas informações em Configurações. Confira os dados antes de enviar pelo Google.`
@@ -520,14 +544,16 @@
     const openBtn=e.target.closest('button[data-open]');
     if(openBtn){
       const route=openBtn.dataset.open;
-      const prefilled=E.prefilledUrl(state.formUrl,state.entries,{route,driverId:state.driverId,phone:state.driverPhone});
-      const url=prefilled || state.formUrl;
+      const target=resolvedFormUrl(state.formUrl);
+      const shortUnknown=!knownForm(state.formUrl)&&urlKey(state.formUrl).startsWith('https://forms.gle/');
+      const prefilled=shortUnknown?null:E.prefilledUrl(target,state.entries,{route,driverId:state.driverId,phone:state.driverPhone});
+      const url=prefilled || target;
       // A abertura ocorre no mesmo gesto para evitar bloqueio de pop-up.
       const win=window.open(url,'_blank','noopener,noreferrer');
       if(prefilled){
         toast(`Rota ${route} pré-preenchida. Confira os dados e envie no Google Forms.`);
       } else {
-        copyRoute(route).then(ok=>toast(ok?`Rota ${route} copiada. Preencha no Google Forms após configurar os campos.`:'Configure os IDs dos campos para abrir a rota pré-preenchida.'));
+        copyRoute(route).then(ok=>toast(ok?`Rota ${route} copiada. Cole no Google Forms após configurar os campos.`:'Configure os IDs dos campos para abrir a rota pré-preenchida.'));
       }
       state.opened.add(route);renderRequests();
       if(!win)toast('Se o formulário não abriu, permita pop-ups ou toque novamente.');
@@ -560,12 +586,13 @@
     state.formUrl=newUrl;
     state.driverId=$('driverId').value.replace(/\D/g,'');
     state.driverPhone=$('driverPhone').value.replace(/[^+\d]/g,'');
-    state.entries=changedForm?(isKnownForm(newUrl)?{...VERIFIED_FIELDS}:{route:'',driverId:'',phone:''}):nextEntries;
+    const verified=knownForm(newUrl);
+    state.entries=verified?{...verified.entries}:(changedForm?{route:'',driverId:'',phone:''}:nextEntries);
     if(changedForm){
       $('entryRoute').value=state.entries.route;$('entryDriverId').value=state.entries.driverId;$('entryPhone').value=state.entries.phone;
     }
     save();renderRequests();
-    toast(changedForm?(isKnownForm(newUrl)?'Formulário original restaurado e campos configurados.':'Novo link salvo. Configure os IDs dos campos para pré-preencher.'):'Configurações salvas neste aparelho.');
+    toast(verified?'Formulário reconhecido! Rota, ID e telefone configurados para preenchimento.':changedForm?'Novo link salvo. Configure os IDs dos campos para pré-preencher.':'Configurações salvas neste aparelho.');
   }
   $('saveSettings').onclick=persistSettings;
   function downloadCSV(){
