@@ -1,4 +1,4 @@
-name: Inspect public form field IDs (preview only)
+name: Inspect Google Forms links (preview only)
 on:
   push:
     branches:
@@ -16,35 +16,45 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: preview/seletor-inteligente-rotas
-      - name: Read public Google Forms metadata only (do not submit)
+      - name: Resolve short link and inspect public field IDs without submitting
         shell: python
         run: |
-          import urllib.request, re, json
-          url = 'https://docs.google.com/forms/d/e/1FAIpQLSdgNe0ViWtpMASsPOIDwEE3yqnCuzoVEwQWUgI1-C3PCjM-nQ/viewform'
-          req = urllib.request.Request(url, headers={'User-Agent':'Mozilla/5.0'})
-          html = urllib.request.urlopen(req, timeout=30).read().decode('utf-8')
-          result = {'url':url, 'status':'public-html-unparsed','fields':[]}
-          m = re.search(r'FB_PUBLIC_LOAD_DATA_\s*=\s*(\[.*?\]);', html, flags=re.S)
-          if m:
-            data=json.loads(m.group(1))
-            items = data[1][1]
-            for item in items:
-              label = str(item[1])
-              opts = item[4] or []
-              for opt in opts:
-                if isinstance(opt,list) and isinstance(opt[0],int):
-                  result['fields'].append({'label':label,'entry':f'entry.{opt[0]}'})
-            result['status']='ok'
-          else:
-            result['status']='missing-public-load-data'
+          import urllib.request, re, json, urllib.error
+          urls = [
+            'https://forms.gle/m2Zs4nSjbHcDELX8A',
+            'https://docs.google.com/forms/d/e/1FAIpQLSdgNe0ViWtpMASsPOIDwEE3yqnCuzoVEwQWUgI1-C3PCjM-nQ/viewform'
+          ]
+          results=[]
+          for url in urls:
+            r={'input_url':url,'fields':[],'status':'not_checked'}
+            try:
+              req=urllib.request.Request(url, headers={'User-Agent':'Mozilla/5.0'})
+              with urllib.request.urlopen(req,timeout=30) as resp:
+                html=resp.read().decode('utf-8')
+                r['resolved_url']=resp.geturl()
+                r['http_status']=resp.status
+              m=re.search(r'FB_PUBLIC_LOAD_DATA_\\s*=\\s*(\\[.*?\\]);',html,flags=re.S)
+              if m:
+                data=json.loads(m.group(1))
+                for item in data[1][1]:
+                  label=str(item[1])
+                  for opt in item[4] or []:
+                    if isinstance(opt,list) and isinstance(opt[0],int):
+                      r['fields'].append({'label':label,'entry':f'entry.{opt[0]}'})
+                r['status']='ok'
+              else:
+                r['status']='missing-public-load-data'
+            except Exception as e:
+              r['status']='error'
+              r['error']=str(e)[:160]
+            results.append(r)
           with open('form-entry-map.json','w') as f:
-            json.dump(result,f,ensure_ascii=False,indent=2)
-          print('Form status:',result['status'])
-          print('Labels and entry IDs:',result['fields'])
+            json.dump({'checked_links':results},f,indent=2,ensure_ascii=False)
+          print(json.dumps(results,indent=2,ensure_ascii=False))
       - name: Commit metadata to isolated branch
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add form-entry-map.json
-          git commit -m 'chore: record public Google Forms field identifiers for preview' || exit 0
+          git commit -m 'chore: identify fields for requested short Google Forms link' || exit 0
           git push origin HEAD:preview/seletor-inteligente-rotas
