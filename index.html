@@ -65,9 +65,9 @@
       </section>
       <section class="panel" id="stepRequests">
         <div class="panel-heading"><div class="step">04</div><div><h2>Solicitar rotas</h2><p>Um formulário separado para cada código de rota.</p></div></div>
-        <div class="warning" id="formNotice">O formulário exige o envio pelo próprio Google. Abrir um link não significa que a resposta foi enviada. Confirme o envio nele e depois registre aqui.</div>
+        <div class="warning" id="formNotice">As rotas são preenchidas no link do Google Forms. Revise as informações e toque em Enviar dentro do Google; abrir o link não envia a solicitação.</div>
         <div id="requestList" class="request-list"><p class="empty">Selecione rotas na etapa anterior.</p></div>
-        <div class="tip">💡 Com os identificadores dos campos configurados, abriremos o formulário pré-preenchido. Sem eles, o código da rota será copiado para você colar no Google Forms.</div>
+        <div class="tip">💡 O formulário atual tem os campos de Rota, ID e Telefone identificados. Cadastre seu ID e telefone uma vez em Configurações. Caso a empresa altere o formulário, precisaremos identificar os novos campos.</div>
       </section>
       <section class="panel" id="stepSettings">
         <div class="panel-heading"><div class="step">⚙</div><div><h2>Minhas informações</h2><p>Salvas somente neste navegador. Não envie seus dados no chat.</p></div></div>
@@ -77,7 +77,7 @@
         <p class="hint" id="formUrlHelp">Se a empresa trocar o formulário, cole o novo link e toque em <b>Salvar configurações</b>. Aceita links do Google Forms (docs.google.com/forms ou forms.gle).</p>
         <p class="hint">O e-mail é registrado pelo Google Forms, com a conta que estiver conectada no navegador. Ao mudar de formulário, os IDs de preenchimento avançado serão apagados para evitar usar campos de outro formulário.</p>
         <details class="advanced"><summary>Preenchimento avançado (opcional)</summary>
-          <p>Os IDs <code>entry.123...</code> dos campos ainda precisam ser confirmados. Não inventamos esses números; informe-os somente se já os conhece. Assim poderemos abrir formulários previamente preenchidos.</p>
+          <p>O formulário atual já tem os IDs oficiais identificados. Se o link mudar, os novos IDs deverão ser configurados aqui para ativar o preenchimento automático.</p>
           <div class="field"><label for="entryRoute">ID do campo "Rota"</label><input id="entryRoute" type="text" placeholder="entry.123456789"></div>
           <div class="field"><label for="entryDriverId">ID do campo "ID do entregador"</label><input id="entryDriverId" type="text" placeholder="entry.123456789"></div>
           <div class="field"><label for="entryPhone">ID do campo "Telefone"</label><input id="entryPhone" type="text" placeholder="entry.123456789"></div>
@@ -281,6 +281,10 @@
   const E = window.RouteEngine;
   const $ = (id) => document.getElementById(id);
   const K = 'seletor_rotas_preview_v1';
+  // IDs extraídos da estrutura pública do Google Forms em 11/10/2026, sem enviar respostas.
+  const VERIFIED_FIELDS = Object.freeze({route:'entry.154777964',driverId:'entry.901888441',phone:'entry.520656534'});
+  const isKnownForm = (url) => {try{const u=new URL(url);const base=new URL(E.FORM_URL);return u.origin===base.origin&&u.pathname.replace(/\/$/,'')===base.pathname.replace(/\/$/,'');}catch(_){return false;}};
+  const sameForm = (a,b) => {try{const x=new URL(a),y=new URL(b);return x.origin===y.origin&&x.pathname.replace(/\/$/,'')===y.pathname.replace(/\/$/,'');}catch(_){return false;}};
   const defaults = {favorites:['Canhema','Taboão','Vila Capela'],limit:10,formUrl:E.FORM_URL,driverId:'',driverPhone:'',entries:{route:'',driverId:'',phone:''},history:[]};
   let stored = {};
   try { stored = JSON.parse(localStorage.getItem(K) || '{}'); } catch (_) {}
@@ -295,6 +299,12 @@
     } catch (_) { return false; }
   };
   if (!validFormUrl(state.formUrl)) state.formUrl = E.FORM_URL;
+  // Migra configurações antigas: mantém dados pessoais e preenche somente IDs que estavam vazios.
+  if (isKnownForm(state.formUrl)) {
+    for (const key of Object.keys(VERIFIED_FIELDS)) {
+      if (!state.entries[key]) state.entries[key] = VERIFIED_FIELDS[key];
+    }
+  }
   const save = () => {
     try { localStorage.setItem(K, JSON.stringify({favorites:state.favorites,limit:state.limit,driverId:state.driverId,driverPhone:state.driverPhone,formUrl:state.formUrl,entries:state.entries,history:state.history})); }
     catch (_) { toast('Não foi possível salvar neste navegador.'); }
@@ -487,6 +497,13 @@
   $('goRequests').onclick=()=>nav('stepRequests');
   function selectedRoutes(){return state.rows.filter(r=>r.selected&&!r.alreadySent);}
   function renderRequests(){
+    const ready=Boolean(String(state.entries.route||'').replace(/^entry\./,'').match(/^\d{5,}$/));
+    const missing=[!state.driverId?'ID do entregador':null,!state.driverPhone?'telefone':null].filter(Boolean);
+    $('formNotice').textContent = !ready
+      ? 'Atenção: ainda não temos o identificador do campo Rota neste formulário. O link abrirá sem preencher a rota. Configure os IDs dos campos antes de enviar.'
+      : missing.length
+        ? `A rota será pré-preenchida. Para preencher também ${missing.join(' e ')}, salve essas informações em Configurações. Confira os dados antes de enviar pelo Google.`
+        : 'Os campos Rota, ID e Telefone serão pré-preenchidos. Confira os dados e toque em Enviar no Google Forms. Abrir o link não envia a solicitação.';
     const selected=selectedRoutes();
     $('requestList').innerHTML=selected.map(item=>{
       const opened=state.opened.has(item.route);
@@ -503,10 +520,15 @@
     const openBtn=e.target.closest('button[data-open]');
     if(openBtn){
       const route=openBtn.dataset.open;
-      const url=E.prefilledUrl(state.formUrl,state.entries,{route,driverId:state.driverId,phone:state.driverPhone}) || state.formUrl;
+      const prefilled=E.prefilledUrl(state.formUrl,state.entries,{route,driverId:state.driverId,phone:state.driverPhone});
+      const url=prefilled || state.formUrl;
       // A abertura ocorre no mesmo gesto para evitar bloqueio de pop-up.
       const win=window.open(url,'_blank','noopener,noreferrer');
-      copyRoute(route).then(ok=>{toast(ok?`Rota ${route} copiada. Cole no formulário se necessário.`:'Formulário aberto. Digite a rota se ela não aparecer.');});
+      if(prefilled){
+        toast(`Rota ${route} pré-preenchida. Confira os dados e envie no Google Forms.`);
+      } else {
+        copyRoute(route).then(ok=>toast(ok?`Rota ${route} copiada. Preencha no Google Forms após configurar os campos.`:'Configure os IDs dos campos para abrir a rota pré-preenchida.'));
+      }
       state.opened.add(route);renderRequests();
       if(!win)toast('Se o formulário não abriu, permita pop-ups ou toque novamente.');
       return;
@@ -534,16 +556,16 @@
       if(value&&!/^(?:entry\.)?\d{5,}$/.test(value)){toast(`ID do campo ${k} inválido. Use entry.123456...`);return;}
       nextEntries[k]=value;
     }
-    const changedForm=newUrl!==state.formUrl;
+    const changedForm=!sameForm(newUrl,state.formUrl);
     state.formUrl=newUrl;
     state.driverId=$('driverId').value.replace(/\D/g,'');
     state.driverPhone=$('driverPhone').value.replace(/[^+\d]/g,'');
-    state.entries=changedForm?{route:'',driverId:'',phone:''}:nextEntries;
+    state.entries=changedForm?(isKnownForm(newUrl)?{...VERIFIED_FIELDS}:{route:'',driverId:'',phone:''}):nextEntries;
     if(changedForm){
-      $('entryRoute').value='';$('entryDriverId').value='';$('entryPhone').value='';
+      $('entryRoute').value=state.entries.route;$('entryDriverId').value=state.entries.driverId;$('entryPhone').value=state.entries.phone;
     }
-    save();
-    toast(changedForm?'Link salvo! IDs avançados foram limpos para o novo formulário.':'Configurações salvas neste aparelho.');
+    save();renderRequests();
+    toast(changedForm?(isKnownForm(newUrl)?'Formulário original restaurado e campos configurados.':'Novo link salvo. Configure os IDs dos campos para pré-preencher.'):'Configurações salvas neste aparelho.');
   }
   $('saveSettings').onclick=persistSettings;
   function downloadCSV(){
