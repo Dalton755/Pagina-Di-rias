@@ -33,7 +33,7 @@ jobs:
                 html=resp.read().decode('utf-8')
                 r['resolved_url']=resp.geturl()
                 r['http_status']=resp.status
-              m=re.search(r'FB_PUBLIC_LOAD_DATA_\\s*=\\s*(\\[.*?\\]);',html,flags=re.S)
+              m=re.search(r'FB_PUBLIC_LOAD_DATA_\s*=\s*(\[.*?\]);',html,flags=re.S)
               if m:
                 data=json.loads(m.group(1))
                 for item in data[1][1]:
