@@ -83,5 +83,32 @@ test('Segmenta linhas por posição de palavras',()=>{
   const parsed=E.consolidate(E.parseRows(rows,favorites,'OCR'),favorites,10,[]);
   assert.equal(parsed.filter(r=>r.selected).length,2);
 });
+test('Imagem 39091 contém 17 rotas, mas nenhuma dos 3 clusters favoritos',()=>{
+  const rows=E.consolidate(E.parseText([
+    'S-4 MOTO Centro SBC',
+    'T-20 MOTO Vila São Pedro - z',
+    'A-5 MOTO Americanópolis - z',
+    'A-1 MOTO Americanópolis - z',
+    'B-2 MOTO Rudge Ramos',
+    'A-16 MOTO Jardim Clímax',
+    'C-5 MOTO Ferrazópolis',
+    'B-6 MOTO Centro SBC',
+    'A-3 MOTO Americanópolis - z',
+    'A-4 MOTO Americanópolis - z',
+    'B-14 MOTO Planalto',
+    'A-2 MOTO Americanópolis - z',
+    'C-6 MOTO Ferrazópolis',
+    'B-16 MOTO Vila São Pedro - z',
+    'B-5 MOTO Centro SBC',
+    'A-12 MOTO Pedreira - z',
+    'B-7 MOTO Centro SBC'
+  ].join('\n'),favorites,'39091.jpg'),favorites,50,[]);
+  assert.equal(rows.length,17);
+  assert.equal(rows.filter(r=>r.selected).length,0);
+});
+test('Imagem com Canhema e Taboão seleciona as 2 regiões favoritas',()=>{
+  const rows=scanned('B-12 MOTO Canhema\nA-18 MOTO Taboão\nE-16 MOTO Vila São Pedro - z');
+  assert.equal(rows.filter(r=>r.selected).length,2);
+});
 console.log('Total testes aprovados:',pass);
 if(process.exitCode)process.exit(1);
