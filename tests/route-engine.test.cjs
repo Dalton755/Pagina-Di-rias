@@ -110,5 +110,56 @@ test('Imagem com Canhema e Taboão seleciona as 2 regiões favoritas',()=>{
   const rows=scanned('B-12 MOTO Canhema\nA-18 MOTO Taboão\nE-16 MOTO Vila São Pedro - z');
   assert.equal(rows.filter(r=>r.selected).length,2);
 });
+
+test('Recuperação geométrica: código e cluster na mesma altura',()=>{
+  const routes=[
+    {text:'B-12',y:40,confidence:96},
+    {text:'A-3',y:100,confidence:92},
+    {text:'A-18',y:160,confidence:93}
+  ];
+  const clusters=[
+    {text:'Canhema',y:44,confidence:94},
+    {text:'Americanópolis - z',y:98,confidence:93},
+    {text:'Taboão',y:157,confidence:95}
+  ];
+  const recovered=E.recoverColumnRows(routes,clusters,favorites,'teste.jpeg');
+  assert.equal(recovered.length,3);
+  assert.equal(recovered[0].route,'B-12');
+  assert.equal(recovered[0].cluster,'Canhema');
+  assert.equal(recovered[1].cluster,'Americanópolis');
+  assert.equal(recovered[2].cluster,'Taboão');
+  assert.ok(recovered.every(r=>r.recovered&&r.needsReview));
+  assert.ok(recovered.every(r=>!E.consolidate([r],favorites,3,[])[0].selected));
+});
+test('Sem cluster no alinhamento vertical, recupera apenas rota bloqueada',()=>{
+  const routeRows=[
+    {text:'B-12',y:90,confidence:98},
+    {text:'A-18',y:150,confidence:98}
+  ];
+  const clusterRows=[
+    {text:'Canhema',y:130,confidence:98},
+    {text:'Taboão',y:205,confidence:98}
+  ];
+  const recovered=E.recoverColumnRows(routeRows,clusterRows,favorites,'deslocado');
+  assert.equal(recovered.length,2);
+  assert.ok(recovered.every(r=>!r.cluster&&!r.selected&&r.needsReview));
+});
+test('Célula ambígua nunca é selecionada automaticamente',()=>{
+  const row=E.recoverColumnRows([{text:'A-I',y:100,confidence:89}],
+    [{text:'Canhema',y:102,confidence:94}],favorites,'ocr');
+  assert.equal(row.length,1);
+  assert.equal(row[0].needsReview,true);
+  assert.equal(row[0].route,'A-1');
+});
+test('Segunda leitura mantém alerta de divergência entre imagens',()=>{
+  const original=E.parseText('B-12 MOTO Canhema',favorites,'primeira');
+  const recovered=E.recoverColumnRows([{text:'B-12',y:65,confidence:90}],
+    [{text:'Taboão',y:66,confidence:92}],favorites,'segunda');
+  const result=E.consolidate([...original,...recovered],favorites,5,[]);
+  assert.equal(result.length,1);
+  assert.equal(result[0].conflict,true);
+  assert.equal(result[0].selected,false);
+});
+
 console.log('Total testes aprovados:',pass);
 if(process.exitCode)process.exit(1);
