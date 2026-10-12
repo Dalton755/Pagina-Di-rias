@@ -414,9 +414,11 @@
       const rankA=a.priority<0?999:a.priority,rankB=b.priority<0?999:b.priority;
       return rankA-rankB||a.route.localeCompare(b.route,'pt-BR',{numeric:true});
     });
+    // O limite é diário: registros já confirmados não liberam vagas adicionais.
+    const remaining=Math.max(0,Math.round(Number(limit||1))-already.size);
     let selected=0;
     for(const item of all){
-      if(item.priority>=0&&!item.needsReview&&!item.alreadySent&&selected<Number(limit||1)){
+      if(item.priority>=0&&!item.needsReview&&!item.alreadySent&&selected<remaining){
         item.selected=true;selected++;
       }
     }
