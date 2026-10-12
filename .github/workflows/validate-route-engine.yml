@@ -1,0 +1,20 @@
+name: Validate Seletor de Rotas preview
+on:
+  push:
+    branches: [preview/seletor-inteligente-rotas]
+    paths:
+      - index.html
+      - tests/route-engine.test.cjs
+      - .github/workflows/validate-route-engine.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  route-engine-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node tests/route-engine.test.cjs
