@@ -640,6 +640,8 @@
     const paste=$('pasteText').value.trim();
     if(!state.files.length&&!paste){toast('Adicione imagens ou cole algumas linhas da planilha.');nav('stepImport');return;}
     state.running=true;$('analyzeBtn').disabled=true;
+    // Uma nova importação substitui a fila anterior; o histórico já confirmado permanece.
+    state.batch=null;save();
     state.matches=[];state.rows=[];state.ocrAudit=[];
     let worker=null;
     try{
