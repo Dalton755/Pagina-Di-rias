@@ -148,20 +148,9 @@
     }
     const scores=[];
     for (const [candidate,name] of available) {
-      // Exige palavra completa: evita tratar "Canhema Norte" como simples coincidência parcial.
-      const escaped=candidate.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-      const exact=new RegExp('(?:^|\\s)'+escaped+'(?=\\s|$)').test(row);
-      let score=exact?1:0;
-      if (!exact) {
-        const words=row.split(/\s+/), count=candidate.split(' ').length;
-        for (let len=Math.max(1,count-1);len<=count+1;len++){
-          if (len>words.length)continue;
-          for(let i=0;i+len<=words.length;i++){
-            const segment=words.slice(i,i+len).join(' ');
-            score=Math.max(score,1-levenshtein(segment,candidate)/Math.max(segment.length,candidate.length));
-          }
-        }
-      }
+      // O cluster deve ocupar a célula inteira; termos adicionais podem indicar outra região.
+      const exact=row===candidate;
+      const score=exact?1:1-levenshtein(row,candidate)/Math.max(row.length,candidate.length);
       if(score>=.78)scores.push({name,score,exact});
     }
     scores.sort((a,b)=>b.score-a.score);
