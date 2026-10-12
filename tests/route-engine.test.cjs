@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
 const html=fs.readFileSync('index.html','utf8');
-const scripts=[...html.matchAll(/<script(?:\\s[^>]*)?>([\\s\\S]*?)<\\/script>/g)].map(x=>x[1]);
+const scripts=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)].map(x=>x[1]);
 const engineSource=scripts.find(s=>s.includes('root.RouteEngine = api'));
 assert.ok(engineSource,'Motor de leitura não encontrado no HTML');
 const context={};
@@ -44,11 +44,11 @@ test('Não confunde nome aproximado com certeza',()=>{
   assert.equal(scanned('B-12 MOTO Canhemao')[0].selected,false);
 });
 test('Desduplica a mesma rota e cluster',()=>{
-  const rows=scanned('B-12 MOTO Canhema\\nB-12 MOTO Canhema');
+  const rows=scanned('B-12 MOTO Canhema\nB-12 MOTO Canhema');
   assert.equal(rows.length,1);assert.equal(rows[0].selected,true);
 });
 test('Bloqueia clusters divergentes para mesma rota',()=>{
-  const row=scanned('B-12 MOTO Canhema\\nB-12 MOTO Taboão')[0];
+  const row=scanned('B-12 MOTO Canhema\nB-12 MOTO Taboão')[0];
   assert.equal(row.conflict,true);assert.equal(row.selected,false);
 });
 test('Confiança baixa da célula rota não fica mascarada pela linha',()=>{
@@ -58,11 +58,11 @@ test('Confiança baixa da célula rota não fica mascarada pela linha',()=>{
   assert.equal(rows[0].needsReview,true);
 });
 test('Ordena prioridades de clusters',()=>{
-  const rows=scanned('A-18 MOTO Taboão\\nB-12 MOTO Canhema');
+  const rows=scanned('A-18 MOTO Taboão\nB-12 MOTO Canhema');
   assert.equal(rows[0].cluster,'Canhema');assert.equal(rows[1].cluster,'Taboão');
 });
 test('Respeita limite máximo',()=>{
-  const input=E.parseText('B-12 MOTO Canhema\\nB-13 MOTO Canhema\\nA-18 MOTO Taboão',favorites,'OCR');
+  const input=E.parseText('B-12 MOTO Canhema\nB-13 MOTO Canhema\nA-18 MOTO Taboão',favorites,'OCR');
   const rows=E.consolidate(input,favorites,2,[]);
   assert.equal(rows.filter(x=>x.selected).length,2);
 });
