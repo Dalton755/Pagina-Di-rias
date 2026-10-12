@@ -153,7 +153,7 @@
       const exact=new RegExp('(?:^|\\s)'+escaped+'(?=\\s|$)').test(row);
       let score=exact?1:0;
       if (!exact) {
-        const words=row.split(/\\s+/), count=candidate.split(' ').length;
+        const words=row.split(/\s+/), count=candidate.split(' ').length;
         for (let len=Math.max(1,count-1);len<=count+1;len++){
           if (len>words.length)continue;
           for(let i=0;i+len<=words.length;i++){
@@ -175,7 +175,7 @@
   function parseRows(rows, clusters, source) {
     const result=[];
     for (const row of rows||[]) {
-      const line=String(row.text||'').replace(/\\s+/g,' ').trim();
+      const line=String(row.text||'').replace(/\s+/g,' ').trim();
       const hits=[...line.matchAll(new RegExp(ROUTE_RX.source,ROUTE_RX.flags))];
       if(!hits.length)continue;
       // Não distribuímos um único cluster a várias rotas caso duas linhas tenham se unido no OCR.
