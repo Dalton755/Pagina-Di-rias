@@ -53,7 +53,7 @@
         <div id="fileList" class="file-list"></div>
         <details class="text-alternative"><summary>Ou colar texto de uma planilha</summary><label for="pasteText">Uma rota e seu cluster por linha:</label><textarea id="pasteText" rows="4" placeholder="B-12  MOTO  Canhema&#10;V-17  MOTO  Taboão"></textarea></details>
         <button class="btn primary full" id="analyzeBtn">Analisar e encontrar rotas <span>→</span></button>
-        <p class="hint">As imagens são processadas no seu aparelho. Na primeira análise, o mecanismo de leitura precisa de internet para carregar.</p>
+        <p class="hint">As imagens são processadas no seu aparelho. Em capturas longas, fazemos uma segunda leitura das colunas para recuperar linhas perdidas. Rotas recuperadas exigem conferência antes da solicitação. O mecanismo precisa de internet na primeira utilização.</p>
         <div id="progressBox" class="progress-box hidden" aria-live="polite"><div class="progress-title" id="progressTitle">Preparando leitura…</div><div class="progress-track"><div id="progressBar"></div></div><small id="progressDetail">Aguarde</small></div>
       </section>
       <section class="panel" id="stepResults">
@@ -233,9 +233,63 @@
       return {
         text:ordered.map(word=>word.text).join(' '),
         confidence:ordered.reduce((sum,w)=>sum+(Number.isFinite(w.confidence)?w.confidence:70),0)/ordered.length,
+        y:group.y,
+        height:group.height,
         words:ordered
       };
     });
+  }
+  // OCR em colunas isoladas: corresponde itens apenas quando compartilham a mesma
+  // linha física (posição vertical), nunca por índice nem pela ordem dos resultados.
+  // Todo item recuperado requer conferência humana antes de solicitar.
+  function recoverColumnRows(routeRows, clusterRows, clusters, source) {
+    const routes=[];
+    for(const row of routeRows||[]){
+      if(!Number.isFinite(row.y))continue;
+      const found=findRoutes(row.text||'');
+      if(found.length!==1)continue;
+      routes.push({row,route:found[0],original:String(row.text||'')});
+    }
+    routes.sort((a,b)=>a.row.y-b.row.y);
+    const candidates=[];
+    for(const row of clusterRows||[]){
+      if(!Number.isFinite(row.y))continue;
+      const recognized=identifyCluster(row.text||'',clusters);
+      if(recognized.name)candidates.push({row,...recognized});
+    }
+    if(!routes.length)return [];
+    // Estime o espaço vertical de uma linha; nunca aceite o vizinho da linha seguinte.
+    const gaps=routes.slice(1).map((r,i)=>r.row.y-routes[i].row.y).filter(g=>g>7);
+    gaps.sort((a,b)=>a-b);
+    const spacing=gaps.length?gaps[Math.floor(gaps.length/2)]:60;
+    const tolerance=Math.max(10,Math.min(32,spacing*.34));
+    const result=[];
+    for(const entry of routes){
+      const choices=candidates.map(c=>({candidate:c,delta:Math.abs(c.row.y-entry.row.y)}))
+        .filter(x=>x.delta<=tolerance).sort((a,b)=>a.delta-b.delta);
+      const chosen=choices.length===1?choices[0]:null;
+      // Exija também que esta linha seja a rota mais próxima da célula do cluster.
+      const mutual=chosen&&routes.every(other=>other===entry||
+        Math.abs(other.row.y-chosen.candidate.row.y)>chosen.delta);
+      const matched=mutual?chosen.candidate:null;
+      const routeText=entry.original.trim();
+      const ambiguousDigits=/(?:^|[-‐‑–—])\s*[0-9OIL]*[OIL][0-9OIL]*\b/i.test(routeText);
+      const reasons=['Recuperada por releitura das colunas: confira na imagem original'];
+      if(!matched)reasons.push('Cluster não vinculado de modo seguro à mesma linha');
+      else if(matched.ambiguous||matched.score<.92)reasons.push('Nome do cluster com leitura incerta');
+      if(ambiguousDigits)reasons.push('Confirme dígitos que podem ser I, L ou O');
+      result.push({
+        route:entry.route,
+        cluster:matched?.name||null,
+        confidence:Math.round(Math.max(0,Math.min(100,entry.row.confidence??60))),
+        clusterConfidence:Math.round(100*(matched?.score||0)),
+        recovered:true,needsReview:true,reviewReasons:reasons,
+        source:(source||'Imagem')+' (segunda leitura)',
+        raw:routeText+(matched?' | '+matched.row.text:''),
+        rowY:entry.row.y
+      });
+    }
+    return result;
   }
   function parseText(text, clusters, source) {
     return parseRows(String(text || '').split(/\r?\n/).map(s => ({text:s, confidence:100})), clusters, source);
@@ -298,7 +352,7 @@
     return url.toString();
   }
   return {PRESETS, FORM_URL, normalizeCluster, normalizeRoute, findRoutes, identifyCluster,
-    parseRows, rowsFromBlocks, parseText, consolidate, prefilledUrl};
+    parseRows, rowsFromBlocks, recoverColumnRows, parseText, consolidate, prefilledUrl};
 });
 
 </script>
@@ -338,7 +392,7 @@
   let stored = {};
   try { stored = JSON.parse(localStorage.getItem(K) || '{}'); } catch (_) {}
   const state = {...defaults,...stored,entries:{...defaults.entries,...(stored.entries || {})},
-    files:[], matches:[], rows:[], showAll:false, running:false, opened:new Set()};
+    files:[], matches:[], rows:[], ocrAudit:[], showAll:false, running:false, opened:new Set()};
   state.favorites = Array.isArray(state.favorites) ? state.favorites : [...defaults.favorites];
   state.history = Array.isArray(state.history) ? state.history : [];
   const validFormUrl = (value) => {
@@ -442,6 +496,43 @@
       return canvas;
     } finally {URL.revokeObjectURL(src);}
   }
+  function cropColumns(canvas){
+    const left=Math.min(canvas.width,Math.round(canvas.width*.30));
+    const clusterStart=Math.round(canvas.width*.55);
+    const make=(start,width)=>{
+      const out=document.createElement('canvas');
+      out.width=Math.max(1,width);out.height=canvas.height;
+      const ctx=out.getContext('2d',{willReadFrequently:true});
+      if(!ctx)throw new Error('Canvas indisponível para releitura');
+      ctx.fillStyle='#fff';ctx.fillRect(0,0,out.width,out.height);
+      ctx.drawImage(canvas,start,0,width,canvas.height,0,0,width,canvas.height);
+      return out;
+    };
+    return {route:make(0,left),cluster:make(clusterStart,canvas.width-clusterStart)};
+  }
+  async function recoverOmittedRows(worker,canvas,firstRows,filename){
+    // A segunda leitura só é executada para capturas compridas de tabelas.
+    if(canvas.height<460||canvas.width<560)return [];
+    const crops=cropColumns(canvas);
+    try{
+      const left=await worker.recognize(crops.route,{}, {blocks:true});
+      const right=await worker.recognize(crops.cluster,{}, {blocks:true});
+      const rowItems=E.rowsFromBlocks(left?.data?.blocks);
+      const clusterItems=E.rowsFromBlocks(right?.data?.blocks);
+      const recovered=E.recoverColumnRows(rowItems,clusterItems,state.favorites,filename);
+      const original=new Map(firstRows.map(r=>[r.route,r]));
+      // Ignora leituras repetidas que confirmam a primeira; preserva conflitos reais.
+      return recovered.filter(r=>{
+        const existing=original.get(r.route);
+        if(!existing)return true;
+        return existing.cluster&&r.cluster&&
+          E.normalizeCluster(existing.cluster)!==E.normalizeCluster(r.cluster);
+      });
+    }finally{
+      crops.route.width=0;crops.route.height=0;
+      crops.cluster.width=0;crops.cluster.height=0;
+    }
+  }
   function extractResults(response, fileName){
     const result=response?.data||{};
     const blockRows=E.rowsFromBlocks(result.blocks);
@@ -455,7 +546,7 @@
     const paste=$('pasteText').value.trim();
     if(!state.files.length&&!paste){toast('Adicione imagens ou cole algumas linhas da planilha.');nav('stepImport');return;}
     state.running=true;$('analyzeBtn').disabled=true;
-    state.matches=[];state.rows=[];
+    state.matches=[];state.rows=[];state.ocrAudit=[];
     let worker=null;
     try{
       progress('Preparando análise…',3,'Seus arquivos não são enviados para um servidor.');
@@ -474,13 +565,22 @@
           state.currentImage=i;progress(`Lendo ${state.files[i].name}`,10+i*80/state.files.length,`Imagem ${i+1} de ${state.files.length}`);
           try{
             const canvas=await imageToCanvas(state.files[i]);
-            const result=await worker.recognize(canvas,{}, {blocks:true});
-            state.matches.push(...extractResults(result,state.files[i].name));
-            canvas.width=0;canvas.height=0;
+            try{
+              const result=await worker.recognize(canvas,{}, {blocks:true});
+              const primary=extractResults(result,state.files[i].name);
+              state.matches.push(...primary);
+              progress('Buscando linhas não reconhecidas…',Math.min(96,10+(i+.8)*80/state.files.length),`Releitura de colunas · imagem ${i+1} de ${state.files.length}`);
+              const second=await recoverOmittedRows(worker,canvas,primary,state.files[i].name);
+              state.matches.push(...second);
+              state.ocrAudit.push({filename:state.files[i].name,first:primary.length,additional:second.length});
+            }finally{
+              canvas.width=0;canvas.height=0;
+            }
           }catch(err){toast(`Falha em ${state.files[i].name}: ${err.message}`);}
         }
       }
-      progress('Análise concluída!',100,`${state.matches.length} registros reconhecidos antes de eliminar repetidos.`);
+      const restored=state.ocrAudit.reduce((n,r)=>n+r.additional,0);
+      progress('Análise concluída!',100,`${state.matches.length} registros reconhecidos; ${restored} recuperados para revisão.`);
       rebuildRows();nav('stepResults');
       if(!state.rows.length)toast('Nenhuma rota identificada. Tente imagens mais nítidas ou cole o texto.');
       else toast('Rotas identificadas. Confira a lista antes de solicitar.');
@@ -498,11 +598,12 @@
     const wanted=state.rows.filter(r=>r.priority>=0),unknown=state.rows.filter(r=>!r.cluster),review=state.rows.filter(r=>r.needsReview),ready=state.rows.filter(r=>r.priority>=0&&!r.needsReview&&!r.alreadySent);
     const other=state.rows.length-wanted.length-unknown.length;
     const chosen=state.rows.filter(r=>r.selected).length;
+    const recoveredCount=state.rows.filter(r=>r.recovered).length;
     const foundClusters=[...new Set(state.rows.map(r=>r.cluster).filter(Boolean))];
     const favoritesText=state.favorites.length?state.favorites.join(', '):'Nenhum cluster favorito cadastrado';
     $('resultSummary').innerHTML=state.matches.length ? `
       <strong>${state.rows.length} rotas encontradas</strong> nas imagens · <strong>${wanted.length} dos seus favoritos</strong> ·
-      <strong>${ready.length} prontas</strong> · ${review.length} precisam de revisão.
+      <strong>${ready.length} prontas</strong> · ${review.length} precisam de revisão${recoveredCount?` · <strong>${recoveredCount} recuperada(s)</strong> por segunda leitura`:''}.
       <div style="margin-top:8px;color:#567264">Seus clusters favoritos: ${escape(favoritesText)}.</div>
       ${!wanted.length?`<div style="margin-top:10px;color:#846016">⚠ Nenhuma rota encontrada dos clusters favoritos <strong>nestas imagens</strong>. Isso não significa falha na análise. ${other} rotas pertencem a outras regiões.</div>`:''}
       ${unknown.length?`<div style="margin-top:7px">${unknown.length} rota(s) sem cluster reconhecido.</div>`:''}
