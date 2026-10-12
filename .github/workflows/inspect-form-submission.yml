@@ -1,0 +1,76 @@
+name: Diagnostico de envio Google Forms - somente leitura
+on:
+  push:
+    branches: [preview/seletor-inteligente-rotas]
+    paths:
+      - .github/workflows/inspect-form-submission.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: preview/seletor-inteligente-rotas
+      - name: Inspect public form without submitting any response
+        shell: python
+        run: |
+          import urllib.request, json, re
+          from datetime import datetime, timezone
+          from html import unescape
+          forms=[
+            'https://forms.gle/m2Zs4nSjbHcDELX8A',
+            'https://docs.google.com/forms/d/e/1FAIpQLSdgNe0ViWtpMASsPOIDwEE3yqnCuzoVEwQWUgI1-C3PCjM-nQ/viewform'
+          ]
+          result={'checked_utc':datetime.now(timezone.utc).isoformat(),
+                  'method':'GET-only; no submission; no POST',
+                  'forms':[]}
+          for link in forms:
+            item={'link':link,'status':'unknown'}
+            try:
+              request=urllib.request.Request(link,headers={'User-Agent':'Mozilla/5.0 (compatible; FormsPreviewCheck/1.0)'})
+              with urllib.request.urlopen(request,timeout=30) as response:
+                html=response.read().decode('utf-8','replace')
+                item['http_status']=response.status
+                item['resolved_url']=response.geturl()
+              title=re.search(r'<title[^>]*>(.*?)</title>',html,re.S|re.I)
+              item['page_title']=unescape(re.sub(r'<[^>]+>','',title.group(1))).strip() if title else None
+              match=re.search(r'FB_PUBLIC_LOAD_DATA_\s*=\s*(\[.*?\]);',html,re.S)
+              item['public_form_metadata_present']=bool(match)
+              item['fields']=[]
+              if match:
+                data=json.loads(match.group(1))
+                for q in data[1][1]:
+                  label=str(q[1]).strip()
+                  for opt in q[4] or []:
+                    if isinstance(opt,list) and isinstance(opt[0],int):
+                      item['fields'].append({'label':label,'entry':'entry.'+str(opt[0])})
+              lower=html.lower()
+              item['markers']={
+                'formresponse_referenced':'formresponse' in lower,
+                'recaptcha_referenced':'recaptcha' in lower,
+                'captcha_referenced':'captcha' in lower,
+                'accounts_google_referenced':'accounts.google.com' in lower,
+                'sign_in_text':'fazer login' in lower or 'sign in to google' in lower,
+                'fbzx_referenced':'fbzx' in lower,
+                'draft_response_referenced':'draftresponse' in lower
+              }
+              item['status']='inspected'
+            except Exception as e:
+              item['status']='error'
+              item['error']=str(e)[:180]
+            result['forms'].append(item)
+          with open('form-submission-diagnostic.json','w') as out:
+            json.dump(result,out,ensure_ascii=False,indent=2)
+          print(json.dumps(result,ensure_ascii=False,indent=2))
+      - name: Save read-only diagnostic to isolated preview branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add form-submission-diagnostic.json
+          git commit -m 'chore: diagnose public Google Forms response capabilities without sending' || exit 0
+          git push origin HEAD:preview/seletor-inteligente-rotas
