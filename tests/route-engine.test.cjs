@@ -161,5 +161,69 @@ test('Segunda leitura mantém alerta de divergência entre imagens',()=>{
   assert.equal(result[0].selected,false);
 });
 
+
+test('Vídeo 39310: 18 leituras são 17 linhas, CC-6 é variante de C-6',()=>{
+  const wanted=['Canhema','Taboão','Jardim Clímax','Vila Capela','Centro SBC','Planalto'];
+  const first=E.parseText([
+    'A-16 MOTO Jardim Clímax',
+    'B-5 MOTO Centro SBC',
+    'B-6 MOTO Centro SBC',
+    'S-4 MOTO Centro SBC',
+    'B-14 MOTO Planalto',
+    'A-2 MOTO Americanópolis - z',
+    'A-3 MOTO Americanópolis - z',
+    'A-4 MOTO Americanópolis - z',
+    'A-5 MOTO Americanópolis - z',
+    'A-12 MOTO Pedreira - z',
+    'B-2 MOTO Rudge Ramos',
+    'B-16 MOTO Vila São Pedro - z',
+    'C-5 MOTO Ferrazópolis',
+    'T-20 MOTO Vila São Pedro - z'
+  ].join('\n'),wanted,'39091.jpg');
+  first.push(...E.parseRows([{text:'CC-6 MOTO Ferrazópolis',confidence:62,y:810}],wanted,'39091.jpg'));
+  const recovered=E.recoverColumnRows([
+    {text:'B-7',y:160,confidence:88},
+    {text:'A-1',y:275,confidence:91},
+    {text:'C-6',y:811,confidence:93}
+  ],[
+    {text:'Centro SBC',y:161,confidence:94},
+    {text:'Americanópolis - z',y:275,confidence:92},
+    {text:'Ferrazópolis',y:811,confidence:94}
+  ],wanted,'39091.jpg');
+  assert.equal(first.length,15);
+  assert.equal(recovered.length,3);
+  const combined=E.reconcilePasses(first,recovered,'39091.jpg');
+  assert.equal(combined.reconciled,1);
+  assert.equal(combined.recovered,3);
+  const final=E.consolidate(combined.items,wanted,20,[]);
+  assert.equal(final.length,17);
+  assert.equal(final.some(item=>item.route==='CC-6'),false);
+  assert.equal(final.some(item=>item.route==='C-6'&&item.needsReview&&!item.selected),true);
+  assert.equal(final.some(item=>item.route==='B-7'&&item.needsReview),true);
+  assert.equal(final.some(item=>item.route==='A-1'&&item.needsReview),true);
+});
+test('Rota CC-6 de outra linha não é eliminada por semelhança de letras',()=>{
+  const source='tabela.jpg';
+  const primary=[{route:'CC-6',cluster:'Ferrazópolis',source,rowY:100,needsReview:false}];
+  const secondary=[{route:'C-6',cluster:'Ferrazópolis',source,rowY:200,needsReview:true,recovered:true}];
+  const combined=E.reconcilePasses(primary,secondary,source);
+  assert.equal(combined.reconciled,0);
+  assert.equal(combined.items.length,2);
+});
+test('Não concilia códigos com dígitos diferentes ou clusters divergentes',()=>{
+  const source='tabela.jpg';
+  const p=[{route:'CC-6',cluster:'Ferrazópolis',source,rowY:100,needsReview:true}];
+  const s=[
+    {route:'C-7',cluster:'Ferrazópolis',rowY:101,needsReview:true},
+    {route:'C-6',cluster:'Centro SBC',rowY:101,needsReview:true}
+  ];
+  assert.equal(E.reconcilePasses(p,s,source).items.length,3);
+});
+test('Não concilia leituras de imagens diferentes',()=>{
+  const first=[{route:'CC-6',cluster:'Ferrazópolis',source:'imagem_1.jpg',rowY:50,needsReview:true}];
+  const second=[{route:'C-6',cluster:'Ferrazópolis',rowY:51,source:'imagem_2.jpg',needsReview:true}];
+  assert.equal(E.reconcilePasses(first,second,'imagem_2.jpg').reconciled,0);
+});
+
 console.log('Total testes aprovados:',pass);
 if(process.exitCode)process.exit(1);
