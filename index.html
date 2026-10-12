@@ -196,7 +196,8 @@
           clusterConfidence:Math.round(cluster.score*100),
           needsReview:reasons.length>0,
           reviewReasons:reasons,
-          source:source||'Texto',raw:line
+          source:source||'Texto',raw:line,
+          rowY:Number.isFinite(row.y)?row.y:null
         });
       }
     }
@@ -291,6 +292,78 @@
     }
     return result;
   }
+  // Concilia as duas leituras apenas quando pertencem à MESMA linha física
+  // da MESMA imagem. Um prefixo duplicado pelo OCR (C-6 / CC-6) vira
+  // um único registro pendente de confirmação: jamais é enviado automaticamente.
+  function isRepeatedPrefixVariant(first, second) {
+    const a=/^([A-Z]{1,3})-(\\d{1,3})$/.exec(first||'');
+    const b=/^([A-Z]{1,3})-(\\d{1,3})$/.exec(second||'');
+    if(!a||!b||a[2]!==b[2]||Math.abs(a[1].length-b[1].length)!==1)return false;
+    const longer=a[1].length>b[1].length?a[1]:b[1];
+    const shorter=a[1].length>b[1].length?b[1]:a[1];
+    for(let i=1;i<longer.length;i++){
+      if(longer[i]===longer[i-1]&&longer.slice(0,i)+longer.slice(i+1)===shorter)return true;
+    }
+    return false;
+  }
+  function reconcilePasses(primary, secondary, source) {
+    const base=(primary||[]).map(item=>({...item,reviewReasons:[...(item.reviewReasons||[])]}));
+    const added=[];
+    let reconciled=0;
+    let recovered=0;
+    for(const candidate of secondary||[]){
+      const same=base.find(x=>x.route===candidate.route);
+      if(same){
+        if(same.cluster&&candidate.cluster&&normalizeCluster(same.cluster)!==normalizeCluster(candidate.cluster)){
+          added.push({...candidate,needsReview:true});
+        }
+        continue;
+      }
+      const eligible=base.filter(item=>
+        Number.isFinite(item.rowY)&&Number.isFinite(candidate.rowY)&&
+        Math.abs(item.rowY-candidate.rowY)<=20&&
+        item.source===source&&
+        item.cluster&&candidate.cluster&&
+        normalizeCluster(item.cluster)===normalizeCluster(candidate.cluster)&&
+        isRepeatedPrefixVariant(item.route,candidate.route)
+      );
+      if(eligible.length===1){
+        const original=eligible[0];
+        const simpler=original.route.length<=candidate.route.length?original:candidate;
+        const alternative=original.route===simpler.route?candidate.route:original.route;
+        const idx=base.indexOf(original);
+        base[idx]={
+          ...simpler,
+          source:source+' (duas leituras)',
+          rowY:candidate.rowY,
+          recovered:true,
+          needsReview:true,
+          confidence:Math.min(original.confidence||100,candidate.confidence||100),
+          reviewReasons:[
+            ...new Set([
+              ...(simpler.reviewReasons||[]),
+              'OCR apresentou '+original.route+' e '+candidate.route+' na mesma linha. Confira o código na imagem antes de solicitar.'
+            ])
+          ],
+          raw:(original.raw||'')+' | segunda leitura: '+(candidate.raw||''),
+          alternateRoute:alternative
+        };
+        reconciled++;
+        recovered++;
+        continue;
+      }
+      if(eligible.length>1){
+        // Se múltiplas rotas competirem pela mesma linha, não omite nenhuma.
+        for(const item of eligible){
+          item.needsReview=true;
+          item.reviewReasons.push('Várias rotas possíveis na mesma linha: confira a imagem');
+        }
+      }
+      added.push(candidate);
+      recovered++;
+    }
+    return {items:[...base,...added],reconciled,recovered};
+  }
   function parseText(text, clusters, source) {
     return parseRows(String(text || '').split(/\r?\n/).map(s => ({text:s, confidence:100})), clusters, source);
   }
@@ -352,7 +425,7 @@
     return url.toString();
   }
   return {PRESETS, FORM_URL, normalizeCluster, normalizeRoute, findRoutes, identifyCluster,
-    parseRows, rowsFromBlocks, recoverColumnRows, parseText, consolidate, prefilledUrl};
+    parseRows, rowsFromBlocks, recoverColumnRows, reconcilePasses, parseText, consolidate, prefilledUrl};
 });
 
 </script>
@@ -568,11 +641,14 @@
             try{
               const result=await worker.recognize(canvas,{}, {blocks:true});
               const primary=extractResults(result,state.files[i].name);
-              state.matches.push(...primary);
               progress('Buscando linhas não reconhecidas…',Math.min(96,10+(i+.8)*80/state.files.length),`Releitura de colunas · imagem ${i+1} de ${state.files.length}`);
               const second=await recoverOmittedRows(worker,canvas,primary,state.files[i].name);
-              state.matches.push(...second);
-              state.ocrAudit.push({filename:state.files[i].name,first:primary.length,additional:second.length});
+              const combined=E.reconcilePasses(primary,second,state.files[i].name);
+              state.matches.push(...combined.items);
+              state.ocrAudit.push({
+                filename:state.files[i].name,first:primary.length,
+                additional:combined.recovered,merged:combined.reconciled
+              });
             }finally{
               canvas.width=0;canvas.height=0;
             }
@@ -580,7 +656,8 @@
         }
       }
       const restored=state.ocrAudit.reduce((n,r)=>n+r.additional,0);
-      progress('Análise concluída!',100,`${state.matches.length} registros reconhecidos; ${restored} recuperados para revisão.`);
+      const merged=state.ocrAudit.reduce((n,r)=>n+(r.merged||0),0);
+      progress('Análise concluída!',100,`${state.matches.length} registros; ${restored} recuperados, ${merged} leituras divergentes conciliadas para revisão.`);
       rebuildRows();nav('stepResults');
       if(!state.rows.length)toast('Nenhuma rota identificada. Tente imagens mais nítidas ou cole o texto.');
       else toast('Rotas identificadas. Confira a lista antes de solicitar.');
