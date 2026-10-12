@@ -139,121 +139,159 @@
     return previous[b.length];
   }
   function identifyCluster(rowText, clusters) {
-    const options = [...new Set([...PRESETS, ...(clusters || [])])];
     const row = normalizeCluster(String(rowText).replace(new RegExp(ROUTE_RX.source, 'gi'), ' '));
-    if (!row) return {name: null, score: 0};
-    let best = {name: null, score: 0};
-    for (const name of options) {
-      const candidate = normalizeCluster(name);
-      if (!candidate) continue;
-      // Nome encontrado por inteiro na linha (independente do sufixo -z).
-      let score = (row === candidate || row.includes(candidate)) ? 1 : 0;
-      if (score !== 1) {
-        const rowWords = row.split(/\s+/);
-        const candidateLength = candidate.split(/\s+/).length;
-        for (let len = Math.max(1, candidateLength - 1); len <= candidateLength + 1; len++) {
-          if (len > rowWords.length) continue;
-          for (let i = 0; i + len <= rowWords.length; i++) {
-            const segment = rowWords.slice(i, i + len).join(' ');
-            const ratio = 1 - levenshtein(segment, candidate) / Math.max(segment.length, candidate.length);
-            score = Math.max(score, ratio);
+    if (!row) return {name:null,score:0,ambiguous:false};
+    const available = new Map();
+    for (const name of [...PRESETS,...(clusters||[])]) {
+      const key = normalizeCluster(name);
+      if (key && !available.has(key)) available.set(key,name);
+    }
+    const scores=[];
+    for (const [candidate,name] of available) {
+      // Exige palavra completa: evita tratar "Canhema Norte" como simples coincidência parcial.
+      const escaped=candidate.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+      const exact=new RegExp('(?:^|\\s)'+escaped+'(?=\\s|$)').test(row);
+      let score=exact?1:0;
+      if (!exact) {
+        const words=row.split(/\\s+/), count=candidate.split(' ').length;
+        for (let len=Math.max(1,count-1);len<=count+1;len++){
+          if (len>words.length)continue;
+          for(let i=0;i+len<=words.length;i++){
+            const segment=words.slice(i,i+len).join(' ');
+            score=Math.max(score,1-levenshtein(segment,candidate)/Math.max(segment.length,candidate.length));
           }
         }
       }
-      if (score > best.score) best = {name, score};
+      if(score>=.78)scores.push({name,score,exact});
     }
-    // Atribuições vagas não devem gerar formulários.
-    if (best.score < 0.78) return {name: null, score: best.score};
-    return best;
+    scores.sort((a,b)=>b.score-a.score);
+    if(!scores.length)return {name:null,score:0,ambiguous:false};
+    const first=scores[0],second=scores[1];
+    // Dois clusters na mesma linha ou duas hipóteses muito próximas exigem conferência humana.
+    const ambiguous=Boolean(second&&second.score>=.83&&(first.score-second.score<.10));
+    return {name:first.name,score:first.score,ambiguous,
+      alternative:ambiguous?second.name:null};
   }
   function parseRows(rows, clusters, source) {
-    const result = [];
-    for (const row of rows) {
-      const line = String(row.text || '').replace(/\s+/g, ' ').trim();
-      const routes = findRoutes(line);
-      if (!routes.length) continue;
-      const cluster = identifyCluster(line, clusters);
-      for (const route of routes) {
-        const confidence = typeof row.confidence === 'number' ? Math.round(row.confidence) : 100;
+    const result=[];
+    for (const row of rows||[]) {
+      const line=String(row.text||'').replace(/\\s+/g,' ').trim();
+      const hits=[...line.matchAll(new RegExp(ROUTE_RX.source,ROUTE_RX.flags))];
+      if(!hits.length)continue;
+      // Não distribuímos um único cluster a várias rotas caso duas linhas tenham se unido no OCR.
+      const multiRoute=hits.length!==1;
+      const afterRoute=multiRoute?line:line.slice(hits[0].index+hits[0][0].length);
+      const cluster=identifyCluster(afterRoute,clusters);
+      for(const hit of hits){
+        const route=normalizeRoute(hit[0]);
+        if(!route)continue;
+        const originalConfidence=Number.isFinite(row.confidence)?row.confidence:100;
+        let confidence=originalConfidence;
+        // Usa a confiança da célula da rota, em vez de diluí-la com textos legíveis do resto da linha.
+        if(Array.isArray(row.words)&&row.words.length){
+          const direct=row.words.filter(w=>findRoutes(w.text||'').includes(route));
+          const relevant=direct.length?direct:row.words.slice(0,Math.min(3,row.words.length));
+          confidence=Math.min(originalConfidence,...relevant.map(w=>Number.isFinite(w.confidence)?w.confidence:70));
+        }
+        confidence=Math.max(0,Math.min(100,Math.round(confidence)));
+        const reasons=[];
+        if(multiRoute)reasons.push('Duas ou mais rotas na mesma linha; confirme cada cluster');
+        if(!cluster.name)reasons.push('Cluster não reconhecido');
+        if(cluster.ambiguous)reasons.push('Cluster ambíguo: '+cluster.name+' / '+cluster.alternative);
+        if(cluster.name&&cluster.score<.92)reasons.push('Nome do cluster identificado com pouca certeza');
+        if(confidence<78)reasons.push('Código ou linha com baixa confiança de leitura');
+        // Trocas de I, L e O por números são só hipótese, nunca autorização automática.
+        if(/[OIL]/i.test(hit[2]))reasons.push('Número do código corrigido pelo OCR; confira o original');
         result.push({
-          route, cluster: cluster.name,
-          confidence, clusterConfidence: Math.round(cluster.score * 100),
-          needsReview: confidence < 65 || cluster.score < 0.86,
-          source: source || 'Texto', raw: line
+          route,cluster:cluster.name,confidence,
+          clusterConfidence:Math.round(cluster.score*100),
+          needsReview:reasons.length>0,
+          reviewReasons:reasons,
+          source:source||'Texto',raw:line
         });
       }
     }
     return result;
   }
   function rowsFromBlocks(blocks) {
-    const words = [];
-    for (const block of blocks || [])
-      for (const paragraph of block.paragraphs || [])
-        for (const line of paragraph.lines || [])
-          for (const word of line.words || []) {
-            if (!word.text || !word.bbox) continue;
-            words.push({text: word.text, confidence: word.confidence,
-              x: (word.bbox.x0 + word.bbox.x1) / 2,
-              y: (word.bbox.y0 + word.bbox.y1) / 2,
-              height: Math.max(1, word.bbox.y1 - word.bbox.y0)});
+    const words=[];
+    for(const block of blocks||[])
+      for(const paragraph of block.paragraphs||[])
+        for(const line of paragraph.lines||[])
+          for(const word of line.words||[]){
+            if(!word.text||!word.bbox)continue;
+            words.push({text:word.text,confidence:word.confidence,
+              x:(word.bbox.x0+word.bbox.x1)/2,
+              y:(word.bbox.y0+word.bbox.y1)/2,
+              height:Math.max(1,word.bbox.y1-word.bbox.y0)});
           }
-    words.sort((a, b) => a.y - b.y || a.x - b.x);
-    const groups = [];
-    for (const w of words) {
-      let best = null, delta = Infinity;
-      for (const group of groups) {
-        const tolerance = Math.max(7, Math.min(24, (group.height + w.height) * 0.31));
-        if (Math.abs(group.y - w.y) <= tolerance && Math.abs(group.y - w.y) < delta) {
-          best = group; delta = Math.abs(group.y - w.y);
-        }
+    words.sort((a,b)=>a.y-b.y||a.x-b.x);
+    const groups=[];
+    for(const word of words){
+      let chosen=null,dist=Infinity;
+      for(const group of groups){
+        const tolerance=Math.max(5,Math.min(18,Math.min(group.height,word.height)*.38));
+        const dy=Math.abs(group.y-word.y);
+        if(dy<=tolerance&&dy<dist){chosen=group;dist=dy;}
       }
-      if (!best) { best = {y: w.y, height: w.height, words: []}; groups.push(best); }
-      best.words.push(w);
-      best.y = best.words.reduce((s, item) => s + item.y, 0) / best.words.length;
-      best.height = best.words.reduce((s, item) => s + item.height, 0) / best.words.length;
+      if(!chosen){chosen={y:word.y,height:word.height,words:[]};groups.push(chosen);}
+      chosen.words.push(word);
+      chosen.y=chosen.words.reduce((sum,w)=>sum+w.y,0)/chosen.words.length;
+      chosen.height=chosen.words.reduce((sum,w)=>sum+w.height,0)/chosen.words.length;
     }
-    return groups.sort((a,b) => a.y - b.y).map(group => {
-      const sorted = group.words.sort((a,b) => a.x - b.x);
-      return {text: sorted.map(w => w.text).join(' '),
-        confidence: sorted.reduce((s,w) => s + (Number.isFinite(w.confidence) ? w.confidence : 70), 0) / sorted.length};
+    return groups.sort((a,b)=>a.y-b.y).map(group=>{
+      const ordered=group.words.sort((a,b)=>a.x-b.x);
+      return {
+        text:ordered.map(word=>word.text).join(' '),
+        confidence:ordered.reduce((sum,w)=>sum+(Number.isFinite(w.confidence)?w.confidence:70),0)/ordered.length,
+        words:ordered
+      };
     });
   }
   function parseText(text, clusters, source) {
     return parseRows(String(text || '').split(/\r?\n/).map(s => ({text:s, confidence:100})), clusters, source);
   }
   function consolidate(items, favorites, limit, submittedToday) {
-    const wanted = [...new Set((favorites || []).map(normalizeCluster))];
-    const already = new Set(submittedToday || []);
-    const grouped = new Map();
-    for (const item of items || []) {
-      if (!item.route || !normalizeRoute(item.route)) continue;
-      const route = normalizeRoute(item.route);
-      if (!grouped.has(route)) grouped.set(route, {...item, route, conflict: false});
-      else {
-        const existing = grouped.get(route);
-        if (existing.cluster && item.cluster && normalizeCluster(existing.cluster) !== normalizeCluster(item.cluster)) {
-          existing.conflict = true;
-          existing.needsReview = true;
-        }
-        // Se a primeira leitura não identificou o cluster, usar leitura posterior.
-        if (!existing.cluster && item.cluster) existing.cluster = item.cluster;
-        existing.needsReview = existing.needsReview || item.needsReview;
+    const wanted=[...new Set((favorites||[]).map(normalizeCluster))];
+    const already=new Set(submittedToday||[]);
+    const grouped=new Map();
+    for(const item of items||[]){
+      const route=normalizeRoute(item.route);
+      if(!route)continue;
+      const evidence={...item,route,reviewReasons:[...(item.reviewReasons||[])]};
+      if(!grouped.has(route)){
+        grouped.set(route,{...evidence,conflict:false,sources:[item.source||'Texto']});
+        continue;
       }
+      const existing=grouped.get(route);
+      if(existing.cluster&&item.cluster&&normalizeCluster(existing.cluster)!==normalizeCluster(item.cluster)){
+        existing.conflict=true;
+        existing.needsReview=true;
+        existing.reviewReasons.push('A mesma rota apareceu em clusters diferentes');
+      }
+      if(!existing.cluster&&item.cluster)existing.cluster=item.cluster;
+      // Conserve uma leitura boa, mas qualquer alerta/discordância exige revisão.
+      existing.needsReview=existing.needsReview||item.needsReview||existing.conflict;
+      existing.reviewReasons.push(...evidence.reviewReasons);
+      existing.sources.push(item.source||'Texto');
+      existing.confidence=Math.min(existing.confidence??100,evidence.confidence??100);
+      existing.clusterConfidence=Math.min(existing.clusterConfidence??100,evidence.clusterConfidence??100);
     }
-    const all = [...grouped.values()].map(item => ({
-      ...item, priority: wanted.indexOf(normalizeCluster(item.cluster)),
-      alreadySent: already.has(item.route),
-      selected: false
+    const all=[...grouped.values()].map(item=>({
+      ...item,
+      reviewReasons:[...new Set(item.reviewReasons||[])],
+      priority:wanted.indexOf(normalizeCluster(item.cluster)),
+      alreadySent:already.has(item.route),
+      selected:false
     }));
-    all.sort((a, b) => {
-      const aRank = a.priority < 0 ? 999 : a.priority;
-      const bRank = b.priority < 0 ? 999 : b.priority;
-      return aRank - bRank || a.route.localeCompare(b.route, 'pt-BR', {numeric: true});
+    all.sort((a,b)=>{
+      const rankA=a.priority<0?999:a.priority,rankB=b.priority<0?999:b.priority;
+      return rankA-rankB||a.route.localeCompare(b.route,'pt-BR',{numeric:true});
     });
-    let chosen = 0;
-    for (const item of all) {
-      if (item.priority >= 0 && !item.needsReview && !item.alreadySent && chosen < Number(limit || 1)) {
-        item.selected = true; chosen++;
+    let selected=0;
+    for(const item of all){
+      if(item.priority>=0&&!item.needsReview&&!item.alreadySent&&selected<Number(limit||1)){
+        item.selected=true;selected++;
       }
     }
     return all;
@@ -468,21 +506,21 @@
     $('heroSent').textContent=sentToday().length;
   }
   function renderResults(){
-    const wanted=state.rows.filter(r=>r.priority>=0),unknown=state.rows.filter(r=>!r.cluster);
+    const wanted=state.rows.filter(r=>r.priority>=0),unknown=state.rows.filter(r=>!r.cluster),review=state.rows.filter(r=>r.needsReview),ready=state.rows.filter(r=>r.priority>=0&&!r.needsReview&&!r.alreadySent);
     const other=state.rows.length-wanted.length-unknown.length;
     const chosen=state.rows.filter(r=>r.selected).length;
-    $('resultSummary').innerHTML=state.matches.length ? `<strong>${state.rows.length}</strong> rota(s) única(s) identificada(s) · <strong>${wanted.length}</strong> nas suas regiões · ${other} em outros clusters · ${unknown.length} sem cluster seguro.
+    $('resultSummary').innerHTML=state.matches.length ? `<strong>${state.rows.length}</strong> rota(s) única(s) identificada(s) · <strong>${wanted.length}</strong> nas suas regiões · ${other} em outros clusters · <strong>${ready.length}</strong> prontas · <strong>${review.length}</strong> para revisão · ${unknown.length} sem cluster seguro.
       ${other>0?`<button id="toggleAll" class="mini-btn" style="margin-left:5px">${state.showAll?'Ocultar outras':'Mostrar todas'}</button>`:''}`:
       'Importe as imagens e toque em “Analisar”.';
     const toggle=$('toggleAll');if(toggle)toggle.onclick=()=>{state.showAll=!state.showAll;renderResults();};
     const display=state.rows.filter(r=>state.showAll||r.priority>=0||!r.cluster);
     $('resultList').innerHTML=display.map(r=>{
       const isLocked=r.alreadySent||r.needsReview||r.priority<0;
-      const label=r.alreadySent?'Registrada hoje':r.conflict?'Cluster divergente':r.needsReview?'Conferir OCR':r.priority<0?'Outro cluster':'Encontrada';
+      const label=r.alreadySent?'Registrada hoje':r.conflict?'Cluster divergente':r.needsReview?'Revisar leitura':r.priority<0?'Outro cluster':'Encontrada';
       const badge=r.needsReview?'warn':r.alreadySent||r.priority<0?'off':'';
       return `<div class="route-card ${r.needsReview?'review':''} ${r.priority<0?'unmatched':''}">
         <label><input type="checkbox" data-route="${escape(r.route)}" ${r.selected?'checked':''} ${isLocked?'disabled':''}>
-        <span class="route-info"><strong>${escape(r.route)}</strong><small>${escape(r.cluster||'Cluster não identificado')} • ${escape(r.source)}</small></span></label>
+        <span class="route-info"><strong>${escape(r.route)}</strong><small>${escape(r.cluster||'Cluster não identificado')} · ${escape((r.sources||[r.source]).join(', '))}</small>${r.needsReview?`<small style="color:#9c6b1d">⚠ ${escape((r.reviewReasons||[]).join(' · ')||'Confira a imagem original')}</small>`:`<small>Leitura da rota: ${r.confidence}% · cluster: ${r.clusterConfidence}%</small>`}</span></label>
         <span class="badge ${badge}">${label}</span>
         <button class="mini-btn" data-fix="${escape(r.route)}" aria-label="Corrigir rota ou cluster">✎</button></div>`;
     }).join('') || '<p class="empty">Nenhuma rota analisada.</p>';
