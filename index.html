@@ -262,7 +262,7 @@
     const gaps=routes.slice(1).map((r,i)=>r.row.y-routes[i].row.y).filter(g=>g>7);
     gaps.sort((a,b)=>a-b);
     const spacing=gaps.length?gaps[Math.floor(gaps.length/2)]:60;
-    const tolerance=Math.max(10,Math.min(32,spacing*.34));
+    const tolerance=Math.max(8,Math.min(24,spacing*.24));
     const result=[];
     for(const entry of routes){
       const choices=candidates.map(c=>({candidate:c,delta:Math.abs(c.row.y-entry.row.y)}))
