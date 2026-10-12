@@ -225,5 +225,34 @@ test('Não concilia leituras de imagens diferentes',()=>{
   assert.equal(E.reconcilePasses(first,second,'imagem_2.jpg').reconciled,0);
 });
 
+
+test('Fila assistida abre a próxima rota ainda não confirmada',()=>{
+  const queue=[{route:'B-12',cluster:'Canhema'},{route:'A-18',cluster:'Taboão'},{route:'W-8',cluster:'Vila Capela'}];
+  const initial=E.queueProgress(queue,[]);
+  assert.equal(initial.total,3);
+  assert.equal(initial.confirmed,0);
+  assert.equal(initial.next.route,'B-12');
+  const middle=E.queueProgress(queue,['B-12']);
+  assert.equal(middle.confirmed,1);
+  assert.equal(middle.next.route,'A-18');
+  const done=E.queueProgress(queue,['B-12','A-18','W-8']);
+  assert.equal(done.remaining,0);
+  assert.equal(done.next,null);
+});
+test('Fila não contabiliza confirmação duplicada como envio adicional',()=>{
+  const queue=[{route:'B-12'},{route:'A-18'}];
+  const progress=E.queueProgress(queue,['B-12','B-12']);
+  assert.equal(progress.confirmed,1);
+  assert.equal(progress.remaining,1);
+});
+test('Limite diário conta solicitações já registradas',()=>{
+  const text='B-12 MOTO Canhema\nA-18 MOTO Taboão\nW-8 MOTO Vila Capela';
+  const rows=E.consolidate(E.parseText(text,favorites,'teste'),favorites,2,['B-12']);
+  assert.equal(rows.filter(x=>x.selected).length,1);
+  assert.equal(rows.find(x=>x.route==='B-12').alreadySent,true);
+  const full=E.consolidate(E.parseText(text,favorites,'teste'),favorites,2,['B-12','A-18']);
+  assert.equal(full.filter(x=>x.selected).length,0);
+});
+
 console.log('Total testes aprovados:',pass);
 if(process.exitCode)process.exit(1);
