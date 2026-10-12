@@ -498,9 +498,17 @@
     const wanted=state.rows.filter(r=>r.priority>=0),unknown=state.rows.filter(r=>!r.cluster),review=state.rows.filter(r=>r.needsReview),ready=state.rows.filter(r=>r.priority>=0&&!r.needsReview&&!r.alreadySent);
     const other=state.rows.length-wanted.length-unknown.length;
     const chosen=state.rows.filter(r=>r.selected).length;
-    $('resultSummary').innerHTML=state.matches.length ? `<strong>${state.rows.length}</strong> rota(s) única(s) identificada(s) · <strong>${wanted.length}</strong> nas suas regiões · ${other} em outros clusters · <strong>${ready.length}</strong> prontas · <strong>${review.length}</strong> para revisão · ${unknown.length} sem cluster seguro.
-      ${other>0?`<button id="toggleAll" class="mini-btn" style="margin-left:5px">${state.showAll?'Ocultar outras':'Mostrar todas'}</button>`:''}`:
-      'Importe as imagens e toque em “Analisar”.';
+    const foundClusters=[...new Set(state.rows.map(r=>r.cluster).filter(Boolean))];
+    const favoritesText=state.favorites.length?state.favorites.join(', '):'Nenhum cluster favorito cadastrado';
+    $('resultSummary').innerHTML=state.matches.length ? `
+      <strong>${state.rows.length} rotas encontradas</strong> nas imagens · <strong>${wanted.length} dos seus favoritos</strong> ·
+      <strong>${ready.length} prontas</strong> · ${review.length} precisam de revisão.
+      <div style="margin-top:8px;color:#567264">Seus clusters favoritos: ${escape(favoritesText)}.</div>
+      ${!wanted.length?`<div style="margin-top:10px;color:#846016">⚠ Nenhuma rota encontrada dos clusters favoritos <strong>nestas imagens</strong>. Isso não significa falha na análise. ${other} rotas pertencem a outras regiões.</div>`:''}
+      ${unknown.length?`<div style="margin-top:7px">${unknown.length} rota(s) sem cluster reconhecido.</div>`:''}
+      ${foundClusters.length?`<div style="margin-top:8px;color:#567264">Clusters identificados: ${escape(foundClusters.join(' · '))}.</div>`:''}
+      ${other>0?`<button id="toggleAll" class="mini-btn" style="margin-top:10px">${state.showAll?'Ocultar rotas de outros clusters':'Ver rotas de outros clusters ('+other+')'}</button>`:''}
+      `:'Importe as imagens e toque em “Analisar”.';
     const toggle=$('toggleAll');if(toggle)toggle.onclick=()=>{state.showAll=!state.showAll;renderResults();};
     const display=state.rows.filter(r=>state.showAll||r.priority>=0||!r.cluster);
     $('resultList').innerHTML=display.map(r=>{
@@ -512,8 +520,10 @@
         <span class="route-info"><strong>${escape(r.route)}</strong><small>${escape(r.cluster||'Cluster não identificado')} · ${escape((r.sources||[r.source]).join(', '))}</small>${r.needsReview?`<small style="color:#9c6b1d">⚠ ${escape((r.reviewReasons||[]).join(' · ')||'Confira a imagem original')}</small>`:`<small>Leitura da rota: ${r.confidence}% · cluster: ${r.clusterConfidence}%</small>`}</span></label>
         <span class="badge ${badge}">${label}</span>
         <button class="mini-btn" data-fix="${escape(r.route)}" aria-label="Corrigir rota ou cluster">✎</button></div>`;
-    }).join('') || '<p class="empty">Nenhuma rota analisada.</p>';
-    $('resultControls').classList.toggle('hidden',!state.rows.length);
+    }).join('') || (state.rows.length
+      ? '<div class="empty" style="padding:22px 12px">Nenhuma rota dos seus clusters favoritos nesta imagem. Use <b>Ver rotas de outros clusters</b> acima para conferir os códigos encontrados, ou importe outra imagem com suas regiões preferidas.</div>'
+      : '<p class="empty">Nenhuma rota identificada nesta análise. Confira a imagem e tente novamente.</p>');
+    $('resultControls').classList.toggle('hidden',!state.rows.length || (wanted.length===0 && !state.showAll));
     $('selectionFooter').classList.toggle('hidden',chosen===0);
     $('selectionCount').textContent=`${chosen} de ${state.limit} rotas`;
   }
