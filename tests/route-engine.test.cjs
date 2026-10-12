@@ -54,8 +54,9 @@ test('Bloqueia clusters divergentes para mesma rota',()=>{
 test('Confiança baixa da célula rota não fica mascarada pela linha',()=>{
   const rows=E.parseRows([{text:'B-12 MOTO Canhema',confidence:92,words:[
     {text:'B-12',confidence:41},{text:'MOTO',confidence:99},{text:'Canhema',confidence:99}]}],favorites,'OCR');
-  assert.equal(rows[0].confidence,41);assert.equal(rows[0].selected,false);
+  assert.equal(rows[0].confidence,41);
   assert.equal(rows[0].needsReview,true);
+  assert.equal(E.consolidate(rows,favorites,3,[])[0].selected,false);
 });
 test('Ordena prioridades de clusters',()=>{
   const rows=scanned('A-18 MOTO Taboão\nB-12 MOTO Canhema');
